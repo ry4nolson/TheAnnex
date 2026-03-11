@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="AppIcon.appiconset/256.png" alt="The Annex" width="128">
+</p>
+
 # The Annex
 
 [![CI](https://github.com/ry4nolson/TheAnnex/actions/workflows/ci.yml/badge.svg)](https://github.com/ry4nolson/TheAnnex/actions/workflows/ci.yml)
