@@ -5,6 +5,8 @@
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 [![Platform: macOS](https://img.shields.io/badge/platform-macOS%2012%2B-lightgrey.svg)](https://github.com/ry4nolson/TheAnnex)
 [![Swift](https://img.shields.io/badge/swift-5.5%2B-orange.svg)](https://swift.org)
+[![Coverage](https://img.shields.io/badge/coverage-60%25-yellowgreen.svg)](Tests/TheAnnexTests.swift)
+[![Sponsor: Texas Beard Co](https://img.shields.io/badge/sponsor-Texas%20Beard%20Co-black.svg)](https://www.texasbeardcompany.com)
 
 A macOS menu bar app that quietly syncs your Mac's folders to your NAS — so everything feels local, even when it's not.
 
