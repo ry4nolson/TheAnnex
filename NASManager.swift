@@ -32,7 +32,7 @@ private enum Defaults {
     static let checkInterval  = "checkInterval"
 
     // Default values
-    static let defaultHostname     = "RyaNAS.local"
+    static let defaultHostname     = "MyNAS.local"
     static let defaultUsername     = "admin"
     static let defaultShares       = "home, Plex, Public"
     static let defaultDownloads    = "/Volumes/home/Downloads"
@@ -103,7 +103,7 @@ class SettingsWindowController: NSObject, NSWindowDelegate {
             backing: .buffered,
             defer: false
         )
-        w.title = "NASManager Settings"
+        w.title = "The Annex Settings"
         w.isReleasedWhenClosed = false
         w.delegate = self
         w.center()
@@ -342,9 +342,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let stateItem = NSMenuItem()
         switch currentState {
         case .connected, .syncing:
-            stateItem.title = "RyaNAS: Connected ✓"
+            stateItem.title = "MyNAS: Connected ✓"
         case .offline:
-            stateItem.title = "RyaNAS: Offline ✗"
+            stateItem.title = "MyNAS: Offline ✗"
         }
         stateItem.isEnabled = false
         menu.addItem(stateItem)
@@ -460,7 +460,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 DispatchQueue.main.async { [weak self] in
                     self?.setStateConnected()
                     self?.sendNotification(
-                        title: "NASManager",
+                        title: "The Annex",
                         body: "Downloads synced and re-linked to NAS"
                     )
                 }
@@ -474,7 +474,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 removeDownloadsSymlinkAndMkdir()
                 DispatchQueue.main.async { [weak self] in
                     self?.sendNotification(
-                        title: "NASManager",
+                        title: "The Annex",
                         body: "Downloads switched to local storage"
                     )
                 }

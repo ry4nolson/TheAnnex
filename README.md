@@ -1,4 +1,4 @@
-# NASManager 2.0
+# The Annex 2.0
 
 A powerful macOS menu bar application for syncing media folders between your Mac and NAS, creating a personal cloud sync system similar to Dropbox or Google Drive.
 
@@ -94,11 +94,11 @@ A powerful macOS menu bar application for syncing media folders between your Mac
 ### Build from Source
 
 ```bash
-cd /Users/rolson/Developer/NASManager
+cd /Users/rolson/Developer/TheAnnex
 ./build.sh
 ```
 
-The app will be installed to `~/Applications/NASManager.app` and launched automatically.
+The app will be installed to `~/Applications/TheAnnex.app` and launched automatically.
 
 ### Requirements
 
@@ -111,10 +111,10 @@ The app will be installed to `~/Applications/NASManager.app` and launched automa
 
 ### First Launch
 
-1. Click the NASManager icon in the menu bar
-2. Select "Open NASManager" to open the main window
+1. Click the The Annex icon in the menu bar
+2. Select "Open The Annex" to open the main window
 3. Go to the **General** tab:
-   - Enter your NAS hostname (e.g., `RyaNAS.local`)
+   - Enter your NAS hostname (e.g., `MyNAS.local`)
    - Enter your NAS username (e.g., `admin`)
    - Enter your NAS password (stored securely in Keychain)
    - List your SMB shares (comma-separated)
@@ -141,7 +141,7 @@ The app will be installed to `~/Applications/NASManager.app` and launched automa
 ### File Structure
 
 ```
-NASManager/
+TheAnnex/
 ├── main.swift                          # Entry point
 ├── Models/                             # Data models
 │   ├── NASState.swift
@@ -266,7 +266,7 @@ View detailed sync history including:
 
 ## License
 
-Personal use project for RyaNAS.
+Personal use project for MyNAS.
 
 ## Credits
 

@@ -1,6 +1,6 @@
 # Multi-NAS Support Guide
 
-NASManager 2.0 now supports managing multiple NAS devices simultaneously, with automatic discovery and per-folder NAS assignment.
+The Annex 2.0 now supports managing multiple NAS devices simultaneously, with automatic discovery and per-folder NAS assignment.
 
 ## Features
 
@@ -13,7 +13,7 @@ NASManager 2.0 now supports managing multiple NAS devices simultaneously, with a
 ### ✅ NAS Discovery
 - **Scan Network** button automatically finds NAS devices on your local network
 - Detects common NAS hostnames:
-  - RyaNAS.local
+  - MyNAS.local
   - synology.local
   - qnap.local
   - freenas.local / truenas.local
@@ -30,13 +30,13 @@ NASManager 2.0 now supports managing multiple NAS devices simultaneously, with a
 
 ### Adding Your First NAS
 
-1. **Open NASManager** from menu bar
+1. **Open The Annex** from menu bar
 2. Go to **General** tab
 3. Click **"Add NAS"** button
 4. Click **"Scan Network"** to discover devices
 5. Select a discovered device or manually enter:
-   - Name (e.g., "RyaNAS")
-   - Hostname (e.g., "RyaNAS.local")
+   - Name (e.g., "MyNAS")
+   - Hostname (e.g., "MyNAS.local")
    - Username (e.g., "admin")
    - Password (stored securely in Keychain)
    - Shares (comma-separated: "home, Plex, Public")
@@ -85,7 +85,7 @@ Perfect for most users:
 ### Multi-NAS Home Setup
 For users with multiple NAS devices:
 ```
-Home NAS (RyaNAS.local)
+Home NAS (MyNAS.local)
 ├── Documents → /Volumes/home/Documents
 ├── Pictures → /Volumes/home/Pictures
 └── Downloads → /Volumes/home/Downloads
@@ -150,8 +150,8 @@ Backup NAS (large HDD)
 
 Each NAS device stores:
 - **ID**: Unique identifier (UUID)
-- **Name**: Display name (e.g., "RyaNAS")
-- **Hostname**: Network address (e.g., "RyaNAS.local")
+- **Name**: Display name (e.g., "MyNAS")
+- **Hostname**: Network address (e.g., "MyNAS.local")
 - **Username**: SMB username
 - **Shares**: List of SMB shares to mount
 - **isDefault**: Boolean flag for default NAS
@@ -160,7 +160,7 @@ Each NAS device stores:
 
 Passwords are stored per-NAS in macOS Keychain:
 - Key format: `nas_{UUID}`
-- Service: `com.ryanas.nasmanager`
+- Service: `com.ry4nolson.theannex`
 - Secure, encrypted storage
 - Separate password for each NAS
 

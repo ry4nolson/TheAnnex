@@ -6,6 +6,7 @@ class NASDiscovery: NSObject, ObservableObject {
     
     private var browser: NWBrowser?
     private var isScanning = false
+    private var bonjourResults: [DiscoveredNAS] = []
     
     func startDiscovery() {
         guard !isScanning else { return }
@@ -57,7 +58,7 @@ class NASDiscovery: NSObject, ObservableObject {
         for result in results {
             switch result.endpoint {
             case .service(let name, let type, let domain, _):
-                let hostname = "\(name).\(domain)"
+                let hostname = "\(name).local"
                 let device = DiscoveredNAS(
                     hostname: hostname,
                     name: name,
@@ -74,33 +75,99 @@ class NASDiscovery: NSObject, ObservableObject {
     
     func scanLocalNetwork() {
         discoveredDevices.removeAll()
+        bonjourResults.removeAll()
         
-        let commonHosts = [
-            ("RyaNAS.local", "RyaNAS"),
-            ("synology.local", "Synology NAS"),
-            ("qnap.local", "QNAP NAS"),
-            ("freenas.local", "FreeNAS"),
-            ("truenas.local", "TrueNAS"),
-            ("nas.local", "NAS"),
-        ]
+        // Phase 1: Bonjour/mDNS discovery for SMB services (finds any NAS advertising SMB)
+        let parameters = NWParameters()
+        parameters.includePeerToPeer = true
         
-        DispatchQueue.global(qos: .utility).async { [weak self] in
-            var found: [DiscoveredNAS] = []
-            
-            for (hostname, name) in commonHosts {
-                if NetworkDetector.pingHost(hostname, timeout: 1) {
+        let smbBrowser = NWBrowser(for: .bonjour(type: "_smb._tcp", domain: nil), using: parameters)
+        
+        smbBrowser.stateUpdateHandler = { newState in
+            switch newState {
+            case .ready:
+                print("NAS Discovery: Bonjour scan ready")
+            case .failed(let error):
+                print("NAS Discovery: Bonjour scan failed - \(error)")
+            default:
+                break
+            }
+        }
+        
+        smbBrowser.browseResultsChangedHandler = { [weak self] results, _ in
+            var devices: [DiscoveredNAS] = []
+            for result in results {
+                switch result.endpoint {
+                case .service(let name, _, _, _):
+                    let hostname = "\(name).local"
+                    // Filter out Macs and common non-NAS devices
                     let device = DiscoveredNAS(
                         hostname: hostname,
                         name: name,
-                        serviceType: "smb"
+                        serviceType: "_smb._tcp"
                     )
-                    found.append(device)
+                    devices.append(device)
+                default:
+                    break
+                }
+            }
+            DispatchQueue.main.async {
+                self?.bonjourResults = devices
+                // Merge with any existing results
+                self?.mergeResults()
+            }
+        }
+        
+        smbBrowser.start(queue: .global(qos: .utility))
+        self.browser = smbBrowser
+        
+        // Phase 2: Also try common NAS hostnames as fallback (in case Bonjour is blocked)
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let commonHosts = [
+                "synology.local", "qnap.local", "freenas.local",
+                "truenas.local", "nas.local", "unraid.local",
+                "openmediavault.local", "asustor.local",
+            ]
+            
+            var fallbackFound: [DiscoveredNAS] = []
+            for hostname in commonHosts {
+                if NetworkDetector.pingHost(hostname, timeout: 1) {
+                    let name = hostname.replacingOccurrences(of: ".local", with: "")
+                    let device = DiscoveredNAS(
+                        hostname: hostname,
+                        name: name,
+                        serviceType: "_smb._tcp"
+                    )
+                    fallbackFound.append(device)
                 }
             }
             
             DispatchQueue.main.async {
-                self?.discoveredDevices = found
+                // Merge fallback results with Bonjour results (deduplicate by hostname)
+                let existing = Set(self?.discoveredDevices.map { $0.hostname } ?? [])
+                for device in fallbackFound {
+                    if !existing.contains(device.hostname) {
+                        self?.discoveredDevices.append(device)
+                    }
+                }
+                self?.discoveredDevices.sort { $0.name < $1.name }
             }
         }
+        
+        // Stop Bonjour scan after 8 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 8.0) { [weak self] in
+            self?.browser?.cancel()
+            self?.browser = nil
+        }
+    }
+    
+    private func mergeResults() {
+        let existing = Set(discoveredDevices.map { $0.hostname })
+        for device in bonjourResults {
+            if !existing.contains(device.hostname) {
+                discoveredDevices.append(device)
+            }
+        }
+        discoveredDevices.sort { $0.name < $1.name }
     }
 }

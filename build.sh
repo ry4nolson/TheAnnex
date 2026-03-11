@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-APP_NAME="NASManager"
+APP_NAME="TheAnnex"
 EXEC_NAME="TheAnnex"
 BUILD_DIR="$SCRIPT_DIR/.build"
 APP_BUNDLE="$BUILD_DIR/$APP_NAME.app"
@@ -86,11 +86,6 @@ mkdir -p "$DEST_DIR"
 if pgrep -x "$EXEC_NAME" > /dev/null; then
     echo "==> Stopping running $EXEC_NAME..."
     pkill -x "$EXEC_NAME"
-    sleep 1
-fi
-if pgrep -x "NASManager" > /dev/null; then
-    echo "==> Stopping old NASManager process..."
-    pkill -x "NASManager"
     sleep 1
 fi
 

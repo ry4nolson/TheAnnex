@@ -135,9 +135,7 @@ struct WelcomeSheet: View {
         VStack(spacing: 24) {
             Spacer()
             
-            Image(systemName: "externaldrive.fill.badge.checkmark")
-                .font(.system(size: 64))
-                .foregroundColor(.blue)
+            AppIconView(size: 96)
             
             Text("Welcome to The Annex")
                 .font(.largeTitle)

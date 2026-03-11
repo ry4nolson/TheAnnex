@@ -2,6 +2,7 @@ import SwiftUI
 
 struct GeneralSettingsView: View {
     @ObservedObject private var appState = AppState.shared
+    @ObservedObject private var nasMonitor = NASMonitor.shared
     @State private var checkInterval: Int = 60
     @State private var launchAtLogin: Bool = false
     @State private var showingAddNAS = false
@@ -89,17 +90,17 @@ struct GeneralSettingsView: View {
                 
                 SettingsGroup(title: "Monitoring", icon: "chart.xyaxis.line") {
                     VStack(alignment: .leading, spacing: 8) {
-                        if AppState.shared.nasDevices.isEmpty {
+                        if appState.nasDevices.isEmpty {
                             Text("No NAS devices configured")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                         } else {
-                            ForEach(AppState.shared.nasDevices) { device in
+                            ForEach(appState.nasDevices) { device in
                                 VStack(alignment: .leading, spacing: 6) {
                                     HStack {
-                                        Image(systemName: NASMonitor.shared.perDeviceOnline[device.id] == true ? "circle.fill" : "circle")
+                                        Image(systemName: nasMonitor.perDeviceOnline[device.id] == true ? "circle.fill" : "circle")
                                             .font(.caption2)
-                                            .foregroundColor(NASMonitor.shared.perDeviceOnline[device.id] == true ? .green : .red)
+                                            .foregroundColor(nasMonitor.perDeviceOnline[device.id] == true ? .green : .red)
                                         Text(device.name)
                                             .font(.subheadline)
                                             .fontWeight(.medium)
@@ -107,14 +108,14 @@ struct GeneralSettingsView: View {
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                         Spacer()
-                                        Text(NASMonitor.shared.perDeviceOnline[device.id] == true ? "Online" : "Offline")
+                                        Text(nasMonitor.perDeviceOnline[device.id] == true ? "Online" : "Offline")
                                             .font(.caption)
-                                            .foregroundColor(NASMonitor.shared.perDeviceOnline[device.id] == true ? .green : .red)
+                                            .foregroundColor(nasMonitor.perDeviceOnline[device.id] == true ? .green : .red)
                                     }
                                     
-                                    if NASMonitor.shared.perDeviceOnline[device.id] == true {
+                                    if nasMonitor.perDeviceOnline[device.id] == true {
                                         HStack(spacing: 16) {
-                                            if let quality = NASMonitor.shared.perDeviceQuality[device.id] {
+                                            if let quality = nasMonitor.perDeviceQuality[device.id] {
                                                 HStack(spacing: 4) {
                                                     Text(quality.qualityLevel.rawValue)
                                                         .foregroundColor(qualityColor(quality.qualityLevel))
@@ -130,7 +131,7 @@ struct GeneralSettingsView: View {
                                             
                                             Spacer()
                                             
-                                            if let diskSpace = NASMonitor.shared.perDeviceDiskSpace[device.id] {
+                                            if let diskSpace = nasMonitor.perDeviceDiskSpace[device.id] {
                                                 HStack(spacing: 4) {
                                                     Text("\(diskSpace.freeFormatted) free of \(diskSpace.totalFormatted)")
                                                         .font(.caption)
@@ -328,10 +329,10 @@ struct AddNASSheet: View {
             
             GroupBox(label: Label("NAS Details", systemImage: "externaldrive")) {
                 VStack(alignment: .leading, spacing: 12) {
-                    TextField("Name (e.g., RyaNAS)", text: $name)
+                    TextField("Name (e.g., MyNAS)", text: $name)
                         .textFieldStyle(.roundedBorder)
                     
-                    TextField("Hostname (e.g., RyaNAS.local)", text: $hostname)
+                    TextField("Hostname (e.g., MyNAS.local)", text: $hostname)
                         .textFieldStyle(.roundedBorder)
                     
                     TextField("Username", text: $username)

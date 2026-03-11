@@ -1,6 +1,6 @@
-# Migration Guide: NASManager 1.0 → 2.0
+# Migration Guide: TheAnnex 1.0 → 2.0
 
-This guide helps you migrate from the original single-file NASManager to the new modular version 2.0.
+This guide helps you migrate from the original single-file TheAnnex to the new modular version 2.0.
 
 ## What's Changed
 
@@ -36,32 +36,32 @@ Your existing settings will be automatically preserved:
 
 ```bash
 # Backup your current settings
-defaults read com.ryanas.nasmanager > ~/nasmanager-backup.plist
+defaults read com.ry4nolson.theannex > ~/theannex-backup.plist
 ```
 
 ### 2. Quit the Old Version
 
-If the old NASManager is running:
+If the old TheAnnex is running:
 1. Click the menu bar icon
 2. Select "Quit"
 
 ### 3. Build and Install Version 2.0
 
 ```bash
-cd /Users/rolson/Developer/NASManager
+cd /Users/rolson/Developer/TheAnnex
 ./build.sh
 ```
 
 The new version will:
-- Automatically install to `~/Applications/NASManager.app`
+- Automatically install to `~/Applications/TheAnnex.app`
 - Replace the old version
 - Launch automatically
 
 ### 4. First Launch Configuration
 
 1. **Open the Main Window**
-   - Click the NASManager menu bar icon
-   - Select "Open NASManager"
+   - Click the TheAnnex menu bar icon
+   - Select "Open TheAnnex"
 
 2. **Verify General Settings** (General Tab)
    - Your hostname, username, shares should already be populated
@@ -81,7 +81,7 @@ The new version will:
    - Enable "Only sync on AC power" for laptops (optional)
 
 5. **Enable Launch at Login** (General Tab)
-   - Check "Launch at Login" if you want NASManager to start automatically
+   - Check "Launch at Login" if you want TheAnnex to start automatically
 
 ## Key Differences in Behavior
 
@@ -152,12 +152,12 @@ If your settings didn't carry over:
 
 ```bash
 # Check if old settings exist
-defaults read com.ryanas.nasmanager
+defaults read com.ry4nolson.theannex
 
 # Manually set if needed
-defaults write com.ryanas.nasmanager nasHostname "RyaNAS.local"
-defaults write com.ryanas.nasmanager nasUsername "admin"
-defaults write com.ryanas.nasmanager nasShares "home, Plex, Public"
+defaults write com.ry4nolson.theannex nasHostname "MyNAS.local"
+defaults write com.ry4nolson.theannex nasUsername "admin"
+defaults write com.ry4nolson.theannex nasShares "home, Plex, Public"
 ```
 
 ### Downloads Symlink Missing
@@ -179,10 +179,10 @@ rsync -a ~/Downloads.backup/ /Volumes/home/Downloads/
 
 ```bash
 # Check for errors
-open ~/Applications/NASManager.app
+open ~/Applications/TheAnnex.app
 
 # View logs
-log show --predicate 'process == "NASManager"' --last 5m
+log show --predicate 'process == "TheAnnex"' --last 5m
 ```
 
 ### Build Errors
@@ -196,15 +196,15 @@ Ensure you have:
 
 If you need to revert:
 
-1. Quit NASManager 2.0
+1. Quit TheAnnex 2.0
 2. Restore the old single-file version:
    ```bash
-   cd /Users/rolson/Developer/NASManager
-   git checkout <old-commit-hash> NASManager.swift
+   cd /Users/rolson/Developer/TheAnnex
+   git checkout <old-commit-hash> TheAnnex.swift
    ```
 3. Build the old version:
    ```bash
-   swiftc NASManager.swift -o NASManager \
+   swiftc TheAnnex.swift -o TheAnnex \
        -framework Cocoa -framework UserNotifications
    ```
 
@@ -221,7 +221,7 @@ In the Activity Log tab, click "Export" to save logs for analysis.
 **"NAS: Offline" in menu bar**
 - Check hostname is correct
 - Verify NAS is powered on and accessible
-- Try pinging: `ping RyaNAS.local`
+- Try pinging: `ping MyNAS.local`
 
 **Sync not starting**
 - Ensure folder is enabled (toggle in Sync Folders tab)

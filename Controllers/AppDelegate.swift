@@ -20,7 +20,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         SyncEngine.shared.onLog = { [weak self] entry in
             AppState.shared.addLog(entry)
-            self?.buildMenu()
+            DispatchQueue.main.async {
+                self?.buildMenu()
+            }
         }
         
         NASMonitor.shared.onLog = { entry in
@@ -28,8 +30,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         
         NASMonitor.shared.onStateChange = { [weak self] state in
-            self?.updateIcon()
-            self?.buildMenu()
+            DispatchQueue.main.async {
+                self?.updateIcon()
+                self?.buildMenu()
+            }
             
             if state == .connected {
                 self?.sendNotification(title: "The Annex", body: "Connected to NAS")

@@ -15,7 +15,7 @@ struct AboutView: View {
                     Text(AnnexQuotes.tagline)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
-                    Text("Version 2.0.0")
+                    Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "2.0.0")")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
