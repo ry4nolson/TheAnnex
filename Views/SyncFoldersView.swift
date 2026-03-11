@@ -379,12 +379,18 @@ struct EditSyncFolderSheet: View {
     let folder: SyncFolder
     @Binding var isPresented: Bool
     
+    @State private var folderName: String
+    @State private var localPath: String
+    @State private var nasPath: String
     @State private var isEnabled: Bool
     @State private var excludePatterns: String
     
     init(folder: SyncFolder, isPresented: Binding<Bool>) {
         self.folder = folder
         self._isPresented = isPresented
+        self._folderName = State(initialValue: folder.name)
+        self._localPath = State(initialValue: folder.localPath)
+        self._nasPath = State(initialValue: folder.nasPath)
         self._isEnabled = State(initialValue: folder.isEnabled)
         self._excludePatterns = State(initialValue: folder.excludePatterns.joined(separator: "\n"))
     }
@@ -401,14 +407,40 @@ struct EditSyncFolderSheet: View {
                     Spacer()
                 }
                 
+                HStack {
+                    Text("Name:")
+                        .frame(width: 70, alignment: .trailing)
+                    TextField("Folder Name", text: $folderName)
+                        .textFieldStyle(.roundedBorder)
+                }
+                
+                HStack {
+                    Text("Local:")
+                        .frame(width: 70, alignment: .trailing)
+                    TextField("Local Path", text: $localPath)
+                        .textFieldStyle(.roundedBorder)
+                    Button("Browse") {
+                        browseLocal()
+                    }
+                }
+                
+                HStack {
+                    Text("NAS:")
+                        .frame(width: 70, alignment: .trailing)
+                    TextField("NAS Path", text: $nasPath)
+                        .textFieldStyle(.roundedBorder)
+                    Button("Browse") {
+                        browseNAS()
+                    }
+                }
+                
                 Text("Exclude Patterns (one per line):")
                     .font(.subheadline)
                 TextEditor(text: $excludePatterns)
                     .font(.system(.body, design: .monospaced))
-                    .frame(height: 120)
+                    .frame(height: 100)
                     .border(Color.secondary.opacity(0.3))
             }
-            .padding()
             
             HStack {
                 Button("Cancel") {
@@ -422,14 +454,40 @@ struct EditSyncFolderSheet: View {
                     saveChanges()
                 }
                 .keyboardShortcut(.defaultAction)
+                .disabled(folderName.isEmpty || localPath.isEmpty || nasPath.isEmpty)
             }
         }
-        .frame(width: 450)
+        .frame(width: 500)
         .padding(20)
+    }
+    
+    private func browseLocal() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = URL(fileURLWithPath: localPath)
+        if panel.runModal() == .OK, let url = panel.url {
+            localPath = url.path
+        }
+    }
+    
+    private func browseNAS() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = URL(fileURLWithPath: "/Volumes")
+        if panel.runModal() == .OK, let url = panel.url {
+            nasPath = url.path
+        }
     }
     
     private func saveChanges() {
         var updated = folder
+        updated.name = folderName
+        updated.localPath = localPath
+        updated.nasPath = nasPath
         updated.isEnabled = isEnabled
         updated.excludePatterns = excludePatterns
             .components(separatedBy: .newlines)

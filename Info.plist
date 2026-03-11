@@ -7,7 +7,7 @@
     <key>CFBundleIdentifier</key>
     <string>com.ryanas.theannex</string>
     <key>CFBundleExecutable</key>
-    <string>NASManager</string>
+    <string>TheAnnex</string>
     <key>CFBundleVersion</key>
     <string>1.0</string>
     <key>CFBundleShortVersionString</key>
@@ -28,5 +28,13 @@
     <string>AppIcon</string>
     <key>NSNetworkVolumesUsageDescription</key>
     <string>The Annex needs access to network volumes to sync files with your NAS.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>The Annex needs access to your Photo Library to sync Pictures with your NAS.</string>
+    <key>NSDesktopFolderUsageDescription</key>
+    <string>The Annex needs access to your Desktop to sync files with your NAS.</string>
+    <key>NSDocumentsFolderUsageDescription</key>
+    <string>The Annex needs access to your Documents to sync files with your NAS.</string>
+    <key>NSDownloadsFolderUsageDescription</key>
+    <string>The Annex needs access to your Downloads to sync files with your NAS.</string>
 </dict>
 </plist>

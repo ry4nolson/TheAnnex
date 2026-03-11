@@ -16,6 +16,7 @@ struct GeneralSettingsView: View {
     ]
     
     var body: some View {
+        VStack(spacing: 0) {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 SettingsGroup(title: "NAS Devices", icon: "externaldrive.connected.to.line.below") {
@@ -86,18 +87,88 @@ struct GeneralSettingsView: View {
                     .padding(12)
                 }
                 
-                HStack {
-                    Spacer()
-                    Button("Save Settings") {
-                        saveSettings()
+                SettingsGroup(title: "Monitoring", icon: "chart.xyaxis.line") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        if AppState.shared.nasDevices.isEmpty {
+                            Text("No NAS devices configured")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        } else {
+                            ForEach(AppState.shared.nasDevices) { device in
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack {
+                                        Image(systemName: NASMonitor.shared.perDeviceOnline[device.id] == true ? "circle.fill" : "circle")
+                                            .font(.caption2)
+                                            .foregroundColor(NASMonitor.shared.perDeviceOnline[device.id] == true ? .green : .red)
+                                        Text(device.name)
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                        Text(device.hostname)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        Spacer()
+                                        Text(NASMonitor.shared.perDeviceOnline[device.id] == true ? "Online" : "Offline")
+                                            .font(.caption)
+                                            .foregroundColor(NASMonitor.shared.perDeviceOnline[device.id] == true ? .green : .red)
+                                    }
+                                    
+                                    if NASMonitor.shared.perDeviceOnline[device.id] == true {
+                                        HStack(spacing: 16) {
+                                            if let quality = NASMonitor.shared.perDeviceQuality[device.id] {
+                                                HStack(spacing: 4) {
+                                                    Text(quality.qualityLevel.rawValue)
+                                                        .foregroundColor(qualityColor(quality.qualityLevel))
+                                                    if let latency = quality.latency {
+                                                        Text("• \(String(format: "%.1f", latency))ms")
+                                                            .foregroundColor(.secondary)
+                                                    }
+                                                    Text("• \(String(format: "%.1f", quality.packetLoss))% loss")
+                                                        .foregroundColor(.secondary)
+                                                }
+                                                .font(.caption)
+                                            }
+                                            
+                                            Spacer()
+                                            
+                                            if let diskSpace = NASMonitor.shared.perDeviceDiskSpace[device.id] {
+                                                HStack(spacing: 4) {
+                                                    Text("\(diskSpace.freeFormatted) free of \(diskSpace.totalFormatted)")
+                                                        .font(.caption)
+                                                        .foregroundColor(.secondary)
+                                                    ProgressView(value: diskSpace.usedPercentage, total: 100)
+                                                        .frame(width: 100)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                .padding(6)
+                                .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
+                                .cornerRadius(6)
+                            }
+                        }
                     }
-                    .keyboardShortcut(.return)
+                    .padding(12)
                 }
             }
             .padding()
         }
+        
+        Divider()
+        HStack {
+            Spacer()
+            Button("Save Settings") {
+                saveSettings()
+            }
+            .keyboardShortcut(.return)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 10)
+        .background(Color(NSColor.windowBackgroundColor))
+        }
         .onAppear {
             loadSettings()
+            NASMonitor.shared.performHealthCheck()
         }
         .sheet(isPresented: $showingAddNAS) {
             AddNASSheet(isPresented: $showingAddNAS)
@@ -119,6 +190,16 @@ struct GeneralSettingsView: View {
         appState.updateCheckInterval(checkInterval)
         appState.launchAtLogin = launchAtLogin
         NASMonitor.shared.startMonitoring(interval: TimeInterval(checkInterval))
+    }
+    
+    private func qualityColor(_ level: ConnectionQuality.QualityLevel) -> Color {
+        switch level {
+        case .excellent: return .green
+        case .good: return .blue
+        case .fair: return .orange
+        case .poor: return .red
+        case .unknown: return .gray
+        }
     }
 }
 

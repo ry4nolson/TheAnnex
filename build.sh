@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_NAME="NASManager"
+EXEC_NAME="TheAnnex"
 BUILD_DIR="$SCRIPT_DIR/.build"
 APP_BUNDLE="$BUILD_DIR/$APP_NAME.app"
 CONTENTS="$APP_BUNDLE/Contents"
@@ -38,7 +39,7 @@ swiftc \
     "$SCRIPT_DIR/Views/StatisticsView.swift" \
     "$SCRIPT_DIR/Views/AdvancedSettingsView.swift" \
     "$SCRIPT_DIR/Views/AboutView.swift" \
-    -o "$MACOS/$APP_NAME" \
+    -o "$MACOS/$EXEC_NAME" \
     -framework Cocoa \
     -framework UserNotifications \
     -framework SwiftUI \
@@ -75,13 +76,21 @@ if [ -d "$ICONSET_DIR" ]; then
     cp "$ICONSET_DIR/256.png" "$RESOURCES/AppIcon.png"
 fi
 
+echo "==> Code signing app bundle..."
+codesign --force --deep --sign - "$APP_BUNDLE"
+
 echo "==> Installing to ~/Applications/..."
 mkdir -p "$DEST_DIR"
 
-# Kill running app if it exists
-if pgrep -x "$APP_NAME" > /dev/null; then
-    echo "==> Stopping running $APP_NAME..."
-    pkill -x "$APP_NAME"
+# Kill running app if it exists (check both old and new executable names)
+if pgrep -x "$EXEC_NAME" > /dev/null; then
+    echo "==> Stopping running $EXEC_NAME..."
+    pkill -x "$EXEC_NAME"
+    sleep 1
+fi
+if pgrep -x "NASManager" > /dev/null; then
+    echo "==> Stopping old NASManager process..."
+    pkill -x "NASManager"
     sleep 1
 fi
 
