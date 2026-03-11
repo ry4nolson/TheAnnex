@@ -1,5 +1,11 @@
 # The Annex
 
+[![CI](https://github.com/ry4nolson/TheAnnex/actions/workflows/ci.yml/badge.svg)](https://github.com/ry4nolson/TheAnnex/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/ry4nolson/TheAnnex?label=release)](https://github.com/ry4nolson/TheAnnex/releases/latest)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
+[![Platform: macOS](https://img.shields.io/badge/platform-macOS%2012%2B-lightgrey.svg)](https://github.com/ry4nolson/TheAnnex)
+[![Swift](https://img.shields.io/badge/swift-5.5%2B-orange.svg)](https://swift.org)
+
 A macOS menu bar app that quietly syncs your Mac's folders to your NAS — so everything feels local, even when it's not.
 
 ## Installation
@@ -129,6 +135,8 @@ TheAnnex/
 │   ├── NASDiscovery.swift
 │   ├── KeychainHelper.swift
 │   └── AnnexQuotes.swift
+├── Tests/
+│   └── TheAnnexTests.swift
 └── .github/workflows/
     ├── ci.yml                          # Build on push/PR to main
     └── release.yml                     # Build + publish on version tags
@@ -143,6 +151,14 @@ TheAnnex/
 - **CoreWLAN** — WiFi network detection
 - **IOKit** — Power state detection
 - **Security.framework** — Keychain credential storage
+
+## Testing
+
+```bash
+./test.sh
+```
+
+174 assertions across 19 test suites covering all models, utilities, and controller logic. Tests run in CI on every push and PR.
 
 ## Troubleshooting
 
