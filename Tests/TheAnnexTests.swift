@@ -696,6 +696,23 @@ struct TestRunner {
         print("═══════════════════════════════════════")
         print("")
 
+        // Write coverage badge JSON for shields.io endpoint
+        let coveragePercent = totalTests > 0 ? Int((Double(passedTests) / Double(totalTests)) * 100) : 0
+        let color: String
+        switch coveragePercent {
+        case 90...100: color = "brightgreen"
+        case 75..<90: color = "green"
+        case 60..<75: color = "yellowgreen"
+        case 40..<60: color = "yellow"
+        default: color = "red"
+        }
+        let json = """
+        {"schemaVersion":1,"label":"tests","message":"\(passedTests)/\(totalTests) passed","color":"\(color)"}
+        """
+        let jsonPath = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : ".build/coverage.json"
+        try? json.write(toFile: jsonPath, atomically: true, encoding: .utf8)
+        print("Coverage: \(coveragePercent)% → \(jsonPath)")
+
         exit(failedTests > 0 ? 1 : 0)
     }
 }

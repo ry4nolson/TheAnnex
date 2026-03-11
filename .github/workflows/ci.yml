@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-14
@@ -85,3 +88,17 @@ jobs:
 
       - name: Run tests
         run: ./test.sh
+
+      - name: Publish coverage badge
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          # coverage.json was written by test runner to .build/coverage.json
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git fetch origin coverage || true
+          git checkout --orphan coverage-tmp
+          git rm -rf . 2>/dev/null || true
+          cp .build/coverage.json coverage.json
+          git add coverage.json
+          git commit -m "Update coverage badge"
+          git push origin coverage-tmp:coverage --force
