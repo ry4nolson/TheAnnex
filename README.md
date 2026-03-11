@@ -168,4 +168,4 @@ TheAnnex/
 
 ## License
 
-Personal use project by ry4nolson.
+GPL-3.0 — free to use, modify, and share. Derivative works must remain open source. See [LICENSE](LICENSE) for details.
