@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
+
+      - name: Build app
+        run: |
+          set -euo pipefail
+
+          APP_NAME="TheAnnex"
+          EXEC_NAME="TheAnnex"
+          BUILD_DIR=".build"
+          APP_BUNDLE="$BUILD_DIR/$APP_NAME.app"
+          CONTENTS="$APP_BUNDLE/Contents"
+          MACOS="$CONTENTS/MacOS"
+          RESOURCES="$CONTENTS/Resources"
+
+          mkdir -p "$MACOS" "$RESOURCES"
+
+          swiftc \
+            main.swift \
+            Models/NASState.swift \
+            Models/NASDevice.swift \
+            Models/SyncFolder.swift \
+            Models/SyncJob.swift \
+            Models/ActivityEntry.swift \
+            Models/Statistics.swift \
+            Utilities/ShellHelper.swift \
+            Utilities/RsyncWrapper.swift \
+            Utilities/NetworkDetector.swift \
+            Utilities/NASDiscovery.swift \
+            Utilities/KeychainHelper.swift \
+            Utilities/AnnexQuotes.swift \
+            Controllers/AppState.swift \
+            Controllers/SyncEngine.swift \
+            Controllers/NASMonitor.swift \
+            Controllers/AppDelegate.swift \
+            Controllers/MainWindowController.swift \
+            Views/GeneralSettingsView.swift \
+            Views/SyncFoldersView.swift \
+            Views/ActivityLogView.swift \
+            Views/StatisticsView.swift \
+            Views/AdvancedSettingsView.swift \
+            Views/AboutView.swift \
+            -o "$MACOS/$EXEC_NAME" \
+            -framework Cocoa \
+            -framework UserNotifications \
+            -framework SwiftUI \
+            -framework Combine \
+            -framework Charts \
+            -framework CoreWLAN \
+            -framework IOKit \
+            -framework Security \
+            -framework UniformTypeIdentifiers \
+            -framework Network
+
+          cp Info.plist "$CONTENTS/Info.plist"
+
+          echo "✓ Build succeeded"
