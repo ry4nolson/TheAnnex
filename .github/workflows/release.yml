@@ -100,6 +100,12 @@ jobs:
             cp "$ICONSET_DIR/256.png" "$RESOURCES/AppIcon.png"
           fi
 
+          # Copy sponsor logos
+          if [ -d "TexasBeardCo" ]; then
+            cp TexasBeardCo/HorizontalLogo.png "$RESOURCES/SponsorLogo.png"
+            cp TexasBeardCo/HorizontalLogoWhite.png "$RESOURCES/SponsorLogoWhite.png"
+          fi
+
           echo "==> Code signing app bundle..."
           codesign --force --deep --sign - "$APP_BUNDLE"
 

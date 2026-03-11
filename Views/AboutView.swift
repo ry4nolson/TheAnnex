@@ -26,7 +26,7 @@ struct AboutView: View {
             
             HStack(spacing: 24) {
                 InfoRow(label: "Developer", value: "ry4nolson")
-                InfoRow(label: "Build", value: "2026.03.11")
+                InfoRow(label: "License", value: "GPL-3.0")
                 InfoRow(label: "Platform", value: "macOS 12+")
             }
             
@@ -39,14 +39,48 @@ struct AboutView: View {
                 
                 HStack(alignment: .top, spacing: 24) {
                     VStack(alignment: .leading, spacing: 3) {
-                        FeatureItem(text: "Multi-folder sync with presets")
+                        FeatureItem(text: "Multi-NAS support with discovery")
                         FeatureItem(text: "One-way sync (Local → NAS)")
                         FeatureItem(text: "Bandwidth throttling")
                     }
                     VStack(alignment: .leading, spacing: 3) {
-                        FeatureItem(text: "Smart sync (WiFi, power-based)")
+                        FeatureItem(text: "Live monitoring & health checks")
                         FeatureItem(text: "Activity logging & statistics")
-                        FeatureItem(text: "NAS monitoring & health checks")
+                        FeatureItem(text: "Smart sync (WiFi, power-based)")
+                    }
+                }
+            }
+            
+            Divider()
+                .frame(width: 350)
+            
+            HStack(spacing: 16) {
+                LinkButton(title: "GitHub", icon: "link", url: "https://github.com/ry4nolson/TheAnnex")
+                LinkButton(title: "Releases", icon: "arrow.down.circle", url: "https://github.com/ry4nolson/TheAnnex/releases")
+                LinkButton(title: "Issues", icon: "exclamationmark.bubble", url: "https://github.com/ry4nolson/TheAnnex/issues")
+            }
+            
+            Divider()
+                .frame(width: 350)
+            
+            VStack(spacing: 6) {
+                Text("Sponsored by")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Button(action: {
+                    if let url = URL(string: "https://www.texasbeardcompany.com") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }) {
+                    SponsorLogoView()
+                }
+                .buttonStyle(.plain)
+                .onHover { hovering in
+                    if hovering {
+                        NSCursor.pointingHand.push()
+                    } else {
+                        NSCursor.pop()
                     }
                 }
             }
@@ -96,6 +130,50 @@ struct FeatureItem: View {
             Text(text)
                 .font(.subheadline)
         }
+    }
+}
+
+struct SponsorLogoView: View {
+    @Environment(\.colorScheme) var colorScheme
+    
+    var body: some View {
+        Group {
+            if let image = loadLogo() {
+                Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(height: 30)
+            } else {
+                Text("Texas Beard Company")
+                    .font(.subheadline)
+                    .fontWeight(.bold)
+            }
+        }
+    }
+    
+    private func loadLogo() -> NSImage? {
+        guard let resourcePath = Bundle.main.resourcePath else { return nil }
+        let filename = colorScheme == .dark ? "SponsorLogoWhite.png" : "SponsorLogo.png"
+        let path = (resourcePath as NSString).appendingPathComponent(filename)
+        return NSImage(contentsOfFile: path)
+    }
+}
+
+struct LinkButton: View {
+    let title: String
+    let icon: String
+    let url: String
+    
+    var body: some View {
+        Button(action: {
+            if let url = URL(string: url) {
+                NSWorkspace.shared.open(url)
+            }
+        }) {
+            Label(title, systemImage: icon)
+                .font(.caption)
+        }
+        .buttonStyle(.link)
     }
 }
 

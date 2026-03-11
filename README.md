@@ -166,6 +166,14 @@ TheAnnex/
 2. Check that both devices are on the same network/subnet
 3. Try entering the hostname manually
 
+## Sponsor
+
+<a href="https://www.texasbeardcompany.com">
+  <img src="TexasBeardCo/HorizontalLogo.png" alt="Texas Beard Company" height="40">
+</a>
+
+Proudly sponsored by [Texas Beard Company](https://www.texasbeardcompany.com).
+
 ## License
 
 GPL-3.0 — free to use, modify, and share. Derivative works must remain open source. See [LICENSE](LICENSE) for details.

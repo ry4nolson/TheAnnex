@@ -76,6 +76,13 @@ if [ -d "$ICONSET_DIR" ]; then
     cp "$ICONSET_DIR/256.png" "$RESOURCES/AppIcon.png"
 fi
 
+# Copy sponsor logos
+SPONSOR_DIR="$SCRIPT_DIR/TexasBeardCo"
+if [ -d "$SPONSOR_DIR" ]; then
+    cp "$SPONSOR_DIR/HorizontalLogo.png" "$RESOURCES/SponsorLogo.png"
+    cp "$SPONSOR_DIR/HorizontalLogoWhite.png" "$RESOURCES/SponsorLogoWhite.png"
+fi
+
 echo "==> Code signing app bundle..."
 codesign --force --deep --sign - "$APP_BUNDLE"
 
