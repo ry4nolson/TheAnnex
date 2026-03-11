@@ -47,9 +47,10 @@ struct SyncFoldersView: View {
                             selectedFolder = folder
                         }, onSync: {
                             syncEngine.queueSync(for: folder)
+                        }, onDelete: {
+                            deleteFolder(folder)
                         })
                     }
-                    .onDelete(perform: deleteFolders)
                 }
             }
             
@@ -118,11 +119,13 @@ struct SyncFoldersView: View {
         syncEngine.queueSyncAll(folders: appState.syncFolders)
     }
     
-    private func deleteFolders(at offsets: IndexSet) {
-        for index in offsets {
-            let folder = appState.syncFolders[index]
-            appState.removeSyncFolder(folder)
+    private func deleteFolder(_ folder: SyncFolder) {
+        // Unsymlink if currently symlinked
+        if folder.symlinkMode && folder.symlinkState == .symlinked {
+            let _ = SymlinkManager.shared.removeSymlink(localPath: folder.localPath)
+            SymlinkManager.shared.removeBackup(for: folder.localPath)
         }
+        appState.removeSyncFolder(folder)
     }
 }
 
@@ -130,6 +133,7 @@ struct SyncFolderRow: View {
     let folder: SyncFolder
     let onEdit: () -> Void
     let onSync: () -> Void
+    let onDelete: () -> Void
     
     var body: some View {
         HStack(spacing: 12) {
@@ -155,6 +159,15 @@ struct SyncFolderRow: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
+                if folder.symlinkMode {
+                    HStack(spacing: 4) {
+                        Image(systemName: folder.symlinkState == .symlinked ? "link" : "link.badge.plus")
+                            .font(.caption)
+                        Text(folder.symlinkState == .symlinked ? "Symlinked to NAS" : folder.symlinkState == .restoring ? "Transitioning..." : "Symlink mode (local)")
+                            .font(.caption2)
+                        .foregroundColor(folder.symlinkState == .symlinked ? .blue : .orange)
+                    }
+                }
                 if let lastSync = folder.lastSyncDate {
                     Text("Last synced: \(lastSync, style: .relative) ago")
                         .font(.caption2)
@@ -174,6 +187,12 @@ struct SyncFolderRow: View {
                 Image(systemName: "pencil")
             }
             .help("Edit")
+            
+            Button(action: onDelete) {
+                Image(systemName: "trash")
+                    .foregroundColor(.red)
+            }
+            .help("Delete")
         }
         .padding(.vertical, 4)
     }
@@ -182,6 +201,7 @@ struct SyncFolderRow: View {
 struct ActiveSyncJobRow: View {
     @ObservedObject var job: SyncJob
     let onCancel: () -> Void
+    @State private var showRawLog = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -190,6 +210,12 @@ struct ActiveSyncJobRow: View {
                     .font(.subheadline)
                     .fontWeight(.medium)
                 Spacer()
+                Button(action: { showRawLog.toggle() }) {
+                    Image(systemName: showRawLog ? "terminal.fill" : "terminal")
+                        .font(.caption)
+                }
+                .buttonStyle(.plain)
+                .help(showRawLog ? "Hide raw log" : "Show raw log")
                 if job.state == .running {
                     Button(action: onCancel) {
                         Image(systemName: "xmark.circle.fill")
@@ -215,11 +241,17 @@ struct ActiveSyncJobRow: View {
                 }
             }
             
-            if let currentFile = job.currentFile {
+            if let currentFile = job.currentFile, !currentFile.isEmpty {
                 Text(currentFile)
                     .font(.caption2)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else if job.state == .running {
+                Text("Scanning files…")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
             }
             
             HStack {
@@ -248,6 +280,32 @@ struct ActiveSyncJobRow: View {
                 Spacer()
             }
             .foregroundColor(.secondary)
+            
+            if showRawLog {
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 1) {
+                            ForEach(Array(job.rawLog.enumerated()), id: \.offset) { idx, line in
+                                Text(line)
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .foregroundColor(.green)
+                                    .lineLimit(1)
+                                    .id(idx)
+                            }
+                        }
+                        .padding(6)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(maxHeight: 120)
+                    .background(Color.black)
+                    .cornerRadius(4)
+                    .onChange(of: job.rawLog.count) { _ in
+                        if let last = job.rawLog.indices.last {
+                            proxy.scrollTo(last, anchor: .bottom)
+                        }
+                    }
+                }
+            }
         }
         .padding(8)
         .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
@@ -384,6 +442,7 @@ struct EditSyncFolderSheet: View {
     @State private var nasPath: String
     @State private var isEnabled: Bool
     @State private var excludePatterns: String
+    @State private var symlinkMode: Bool
     
     init(folder: SyncFolder, isPresented: Binding<Bool>) {
         self.folder = folder
@@ -393,6 +452,7 @@ struct EditSyncFolderSheet: View {
         self._nasPath = State(initialValue: folder.nasPath)
         self._isEnabled = State(initialValue: folder.isEnabled)
         self._excludePatterns = State(initialValue: folder.excludePatterns.joined(separator: "\n"))
+        self._symlinkMode = State(initialValue: folder.symlinkMode)
     }
     
     var body: some View {
@@ -405,6 +465,25 @@ struct EditSyncFolderSheet: View {
                 HStack {
                     Toggle("Enabled", isOn: $isEnabled)
                     Spacer()
+                }
+                
+                HStack {
+                    Toggle("Symlink Mode", isOn: $symlinkMode)
+                    Spacer()
+                }
+                
+                if symlinkMode {
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                            .font(.caption)
+                        Text("Symlink mode replaces your local folder with a link to the NAS. When the NAS goes offline, the link is removed so files save locally. When it comes back, new files sync to the NAS and the link is restored.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(8)
+                    .background(Color.orange.opacity(0.1))
+                    .cornerRadius(6)
                 }
                 
                 HStack {
@@ -493,6 +572,7 @@ struct EditSyncFolderSheet: View {
             .components(separatedBy: .newlines)
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
+        updated.symlinkMode = symlinkMode
         
         AppState.shared.updateSyncFolder(updated)
         isPresented = false

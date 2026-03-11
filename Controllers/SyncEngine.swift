@@ -157,15 +157,16 @@ class SyncEngine: ObservableObject {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
             
-            self.log(.info, category: .sync, message: "Counting files in \(folder.localPath)...")
-            let countCommand = "find \"\(folder.localPath)\" -type f | wc -l"
-            let countResult = ShellHelper.run(countCommand)
-            
-            if countResult.isSuccess, let totalFiles = Int(countResult.output.trimmingCharacters(in: .whitespaces)) {
-                DispatchQueue.main.async {
-                    job.totalFiles = totalFiles
+            // Count files in parallel — don't block rsync start
+            DispatchQueue.global(qos: .utility).async {
+                let countCommand = "find \"\(folder.localPath)\" -type f | wc -l"
+                let countResult = ShellHelper.run(countCommand)
+                
+                if countResult.isSuccess, let totalFiles = Int(countResult.output.trimmingCharacters(in: .whitespaces)) {
+                    DispatchQueue.main.async {
+                        job.totalFiles = totalFiles
+                    }
                 }
-                self.log(.info, category: .sync, message: "Found \(totalFiles) files to sync")
             }
             
             let bandwidthLimit = AppState.shared.bandwidthLimitKBps > 0 ? AppState.shared.bandwidthLimitKBps : nil
@@ -183,6 +184,16 @@ class SyncEngine: ObservableObject {
                     job.filesTransferred = progress.filesTransferred
                     job.bytesTransferred = progress.currentBytesTransferred
                     job.transferSpeed = progress.transferRate
+                }
+            },
+            rawOutputHandler: { [weak job] line in
+                guard let job = job else { return }
+                DispatchQueue.main.async {
+                    job.rawLog.append(line)
+                    // Cap at 500 lines to avoid memory bloat
+                    if job.rawLog.count > 500 {
+                        job.rawLog.removeFirst(job.rawLog.count - 500)
+                    }
                 }
             },
             completion: { [weak self] result in
@@ -233,7 +244,43 @@ class SyncEngine: ObservableObject {
                     
                     if var updatedFolder = AppState.shared.syncFolders.first(where: { $0.id == folder.id }) {
                         updatedFolder.lastSyncDate = Date()
-                        AppState.shared.updateSyncFolder(updatedFolder)
+                        
+                        // Symlink mode: create symlink after successful sync (on background thread)
+                        if updatedFolder.symlinkMode && updatedFolder.symlinkState == .local {
+                            updatedFolder.symlinkState = .restoring
+                            AppState.shared.updateSyncFolder(updatedFolder)
+                            
+                            let localPath = folder.localPath
+                            let nasPath = folder.nasPath
+                            let folderId = folder.id
+                            let folderName = folder.name
+                            
+                            DispatchQueue.global(qos: .userInitiated).async {
+                                self.log(.info, category: .sync, message: "Creating symlink for \(folderName): \(localPath) → \(nasPath)")
+                                let symlinkResult = SymlinkManager.shared.createSymlink(localPath: localPath, nasPath: nasPath)
+                                
+                                DispatchQueue.main.async {
+                                    if var final_ = AppState.shared.syncFolders.first(where: { $0.id == folderId }) {
+                                        switch symlinkResult {
+                                        case .success(let backupPath):
+                                            final_.symlinkState = .symlinked
+                                            self.log(.info, category: .sync, message: "Symlinked \(folderName) → \(nasPath)")
+                                            if backupPath != nil {
+                                                DispatchQueue.global(qos: .utility).async {
+                                                    SymlinkManager.shared.removeBackup(for: localPath)
+                                                }
+                                            }
+                                        case .failure(let error):
+                                            final_.symlinkState = .local
+                                            self.log(.error, category: .sync, message: "Symlink failed for \(folderName): \(error)")
+                                        }
+                                        AppState.shared.updateSyncFolder(final_)
+                                    }
+                                }
+                            }
+                        } else {
+                            AppState.shared.updateSyncFolder(updatedFolder)
+                        }
                     }
                 } else {
                     var message = "Failed sync for \(folder.name): \(result.error ?? "Unknown error")"

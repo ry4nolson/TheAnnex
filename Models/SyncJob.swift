@@ -14,6 +14,7 @@ class SyncJob: Identifiable, ObservableObject {
     @Published var transferSpeed: Double
     @Published var estimatedTimeRemaining: TimeInterval?
     @Published var error: String?
+    @Published var rawLog: [String] = []
     let startDate: Date
     @Published var endDate: Date?
     var process: Process?

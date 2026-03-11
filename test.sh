@@ -22,6 +22,8 @@ SOURCE_FILES=(
     "$SCRIPT_DIR/Utilities/NASDiscovery.swift"
     "$SCRIPT_DIR/Utilities/KeychainHelper.swift"
     "$SCRIPT_DIR/Utilities/AnnexQuotes.swift"
+    "$SCRIPT_DIR/Utilities/SymlinkManager.swift"
+    "$SCRIPT_DIR/Utilities/UpdateChecker.swift"
     "$SCRIPT_DIR/Controllers/AppState.swift"
     "$SCRIPT_DIR/Controllers/SyncEngine.swift"
     "$SCRIPT_DIR/Controllers/NASMonitor.swift"

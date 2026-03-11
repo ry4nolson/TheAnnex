@@ -651,6 +651,153 @@ func testDiskSpace() {
 }
 
 // ============================================================
+// MARK: - SymlinkState Tests
+// ============================================================
+
+func testSymlinkState() {
+    runSuite("SymlinkState") {
+        // Raw values
+        assertEqual(SymlinkState.local.rawValue, "local")
+        assertEqual(SymlinkState.symlinked.rawValue, "symlinked")
+        assertEqual(SymlinkState.restoring.rawValue, "restoring")
+
+        // Codable round-trip
+        let states: [SymlinkState] = [.local, .symlinked, .restoring]
+        for state in states {
+            if let data = try? JSONEncoder().encode(state),
+               let decoded = try? JSONDecoder().decode(SymlinkState.self, from: data) {
+                assertEqual(decoded, state)
+            } else {
+                assert(false, "Codable failed for \(state)")
+            }
+        }
+
+        // Equatable
+        assert(SymlinkState.local == SymlinkState.local)
+        assert(SymlinkState.local != SymlinkState.symlinked)
+    }
+}
+
+// ============================================================
+// MARK: - SyncFolder Symlink Fields Tests
+// ============================================================
+
+func testSyncFolderSymlink() {
+    runSuite("SyncFolder Symlink") {
+        // Defaults
+        let folder = SyncFolder(name: "Test", localPath: "/tmp/test", nasPath: "/nas/test")
+        assertEqual(folder.symlinkMode, true, "Default symlinkMode should be true")
+        assertEqual(folder.symlinkState, .local, "Default symlinkState should be .local")
+
+        // Explicit values
+        let linked = SyncFolder(
+            name: "Linked",
+            localPath: "/tmp/linked",
+            nasPath: "/nas/linked",
+            symlinkMode: true,
+            symlinkState: .symlinked
+        )
+        assertEqual(linked.symlinkMode, true)
+        assertEqual(linked.symlinkState, .symlinked)
+
+        // Codable round-trip with symlink fields
+        if let data = try? JSONEncoder().encode(linked),
+           let decoded = try? JSONDecoder().decode(SyncFolder.self, from: data) {
+            assertEqual(decoded.symlinkMode, true)
+            assertEqual(decoded.symlinkState, .symlinked)
+            assertEqual(decoded.name, "Linked")
+        } else {
+            assert(false, "Codable failed for SyncFolder with symlink fields")
+        }
+
+        // Mutation
+        var mutable = folder
+        mutable.symlinkMode = true
+        mutable.symlinkState = .restoring
+        assertEqual(mutable.symlinkMode, true)
+        assertEqual(mutable.symlinkState, .restoring)
+        assert(mutable != folder, "Mutated folder should differ from original")
+    }
+}
+
+// ============================================================
+// MARK: - SymlinkManager Tests
+// ============================================================
+
+func testSymlinkManager() {
+    runSuite("SymlinkManager") {
+        let mgr = SymlinkManager.shared
+        let fm = FileManager.default
+        let testDir = NSTemporaryDirectory() + "theannex-test-\(UUID().uuidString)"
+        let localDir = testDir + "/local"
+        let nasDir = testDir + "/nas"
+
+        // Setup
+        try? fm.createDirectory(atPath: localDir, withIntermediateDirectories: true)
+        try? fm.createDirectory(atPath: nasDir, withIntermediateDirectories: true)
+
+        // Write a test file in local
+        let testFile = localDir + "/testfile.txt"
+        try? "hello".write(toFile: testFile, atomically: true, encoding: .utf8)
+
+        // isSymlink on regular dir
+        assert(!mgr.isSymlink(at: localDir), "Regular dir should not be symlink")
+        assertEqual(mgr.symlinkTarget(at: localDir), nil, "No target for regular dir")
+
+        // createSymlink: NAS path must exist
+        let badResult = mgr.createSymlink(localPath: localDir, nasPath: testDir + "/nonexistent")
+        if case .failure(let err) = badResult {
+            assert(err.description.contains("not found"), "Should fail with NAS not found")
+        } else {
+            assert(false, "Should have failed for nonexistent NAS path")
+        }
+
+        // createSymlink: success
+        let result = mgr.createSymlink(localPath: localDir, nasPath: nasDir)
+        if case .success(let backupPath) = result {
+            assert(backupPath != nil, "Should have created a backup")
+            assert(mgr.isSymlink(at: localDir), "Local should now be symlink")
+            assertEqual(mgr.symlinkTarget(at: localDir), nasDir, "Target should be NAS dir")
+            assert(mgr.hasBackup(for: localDir), "Backup should exist")
+        } else {
+            assert(false, "createSymlink should succeed")
+        }
+
+        // createSymlink: already symlinked
+        let dupResult = mgr.createSymlink(localPath: localDir, nasPath: nasDir)
+        if case .failure(let err) = dupResult {
+            assert(err.description.contains("Already"), "Should report already symlinked")
+        } else {
+            assert(false, "Should fail for already symlinked")
+        }
+
+        // removeSymlink: success
+        let removeResult = mgr.removeSymlink(localPath: localDir)
+        if case .success = removeResult {
+            assert(!mgr.isSymlink(at: localDir), "Should no longer be symlink")
+            assert(fm.fileExists(atPath: localDir), "Local dir should exist again")
+        } else {
+            assert(false, "removeSymlink should succeed")
+        }
+
+        // removeSymlink: not a symlink
+        let notSymlink = mgr.removeSymlink(localPath: localDir)
+        if case .success = notSymlink {
+            // Already a real folder — this is fine
+        } else {
+            assert(false, "removeSymlink on real folder should succeed gracefully")
+        }
+
+        // removeBackup
+        mgr.removeBackup(for: localDir)
+        assert(!mgr.hasBackup(for: localDir), "Backup should be cleaned up")
+
+        // Cleanup
+        try? fm.removeItem(atPath: testDir)
+    }
+}
+
+// ============================================================
 // MARK: - Run All Tests
 // ============================================================
 
@@ -682,6 +829,9 @@ struct TestRunner {
         testRsyncResult()
         testAnnexQuotes()
         testDiskSpace()
+        testSymlinkState()
+        testSyncFolderSymlink()
+        testSymlinkManager()
 
         print("")
         print("═══════════════════════════════════════")

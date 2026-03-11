@@ -17,6 +17,7 @@ class NASMonitor: ObservableObject {
     
     var onLog: ((ActivityEntry) -> Void)?
     var onStateChange: ((NASState) -> Void)?
+    private(set) var hasCompletedInitialCheck = false
     
     private init() {}
     
@@ -63,6 +64,9 @@ class NASMonitor: ObservableObject {
             DispatchQueue.main.async {
                 let previousState = self.currentState
                 self.perDeviceOnline = onlineStatus
+                
+                let isInitialCheck = !self.hasCompletedInitialCheck
+                self.hasCompletedInitialCheck = true
                 
                 if anyOnline {
                     if previousState == .offline {

@@ -37,9 +37,39 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             
             if state == .connected {
                 self?.sendNotification(title: "The Annex", body: "Connected to NAS")
+                
+                // Symlink mode: sync any new local files, then re-symlink
+                DispatchQueue.global(qos: .userInitiated).async {
+                    let folders = AppState.shared.syncFolders.filter { $0.symlinkMode && $0.symlinkState == .local && $0.isEnabled }
+                    for folder in folders {
+                        AppState.shared.addLog(ActivityEntry(level: .info, category: .sync, message: "NAS online — syncing \(folder.name) before re-symlinking"))
+                        SyncEngine.shared.queueSync(for: folder)
+                    }
+                }
             } else if state == .offline {
                 let body = AnnexQuotes.shared.quote(AnnexQuotes.nasOffline) ?? "NAS is offline"
                 self?.sendNotification(title: "The Annex", body: body)
+                
+                // Symlink mode: unsymlink all symlinked folders so files save locally
+                DispatchQueue.global(qos: .userInitiated).async {
+                    let folders = AppState.shared.syncFolders
+                    let results = SymlinkManager.shared.handleNASOffline(folders: folders)
+                    
+                    for (folder, result) in results {
+                        switch result {
+                        case .success:
+                            AppState.shared.addLog(ActivityEntry(level: .info, category: .sync, message: "Unsymlinked \(folder.name) — files will save locally"))
+                            if var updated = AppState.shared.syncFolders.first(where: { $0.id == folder.id }) {
+                                updated.symlinkState = .local
+                                DispatchQueue.main.async {
+                                    AppState.shared.updateSyncFolder(updated)
+                                }
+                            }
+                        case .failure(let error):
+                            AppState.shared.addLog(ActivityEntry(level: .error, category: .sync, message: "Failed to unsymlink \(folder.name): \(error)"))
+                        }
+                    }
+                }
             }
         }
         
@@ -52,6 +82,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         ))
         
         mainWindowController.showWindow()
+        
+        // Check for updates on startup
+        UpdateChecker.shared.checkForUpdates { hasUpdate in
+            if hasUpdate, let latest = UpdateChecker.shared.latestVersion {
+                DispatchQueue.main.async {
+                    let alert = NSAlert()
+                    alert.messageText = "Update Available"
+                    alert.informativeText = "The Annex v\(latest) is available. You're running v\(UpdateChecker.shared.currentVersion)."
+                    alert.alertStyle = .informational
+                    alert.addButton(withTitle: "Download")
+                    alert.addButton(withTitle: "Later")
+                    
+                    if alert.runModal() == .alertFirstButtonReturn {
+                        UpdateChecker.shared.openDownloadPage()
+                    }
+                }
+            }
+        }
     }
     
     func applicationWillTerminate(_ notification: Notification) {

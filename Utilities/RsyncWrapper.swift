@@ -9,6 +9,7 @@ class RsyncWrapper {
         dryRun: Bool = false,
         bandwidthLimit: Int? = nil,
         progressHandler: ((RsyncProgress) -> Void)? = nil,
+        rawOutputHandler: ((String) -> Void)? = nil,
         completion: @escaping (RsyncResult) -> Void
     ) -> Process? {
         let destPath = destination.hasSuffix("/") ? String(destination.dropLast()) : destination
@@ -53,14 +54,12 @@ class RsyncWrapper {
         var lastFileBytes: Int64 = 0
         let startTime = Date()
         
-        let process = ShellHelper.runAsync(command, outputHandler: { output in
-            let lines = output.components(separatedBy: .newlines)
-            for line in lines {
+        let process = ShellHelper.runAsync(command, outputHandler: { line in
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 
-                if trimmed.isEmpty {
-                    continue
-                }
+                guard !trimmed.isEmpty else { return }
+                
+                rawOutputHandler?(trimmed)
                 
                 // Parse progress lines like: "  1,234,567  45%  123.45kB/s    0:00:12"
                 if trimmed.contains("%") && !trimmed.hasPrefix("building") {
@@ -80,23 +79,26 @@ class RsyncWrapper {
                             : 0
                         progressHandler?(currentProgress)
                     }
-                    continue
+                    return
                 }
                 
-                // Skip summary lines
+                // Skip summary/status lines
                 if trimmed.hasPrefix("sending") || trimmed.hasPrefix("sent") || 
                    trimmed.hasPrefix("total size") || trimmed.contains("speedup") ||
                    trimmed.hasPrefix("building file list") || trimmed.contains("to-check=") ||
-                   trimmed.hasPrefix("Number of") {
-                    continue
+                   trimmed.hasPrefix("Number of") || trimmed.hasPrefix("Transfer starting") ||
+                   trimmed.hasPrefix("Total") || trimmed.hasPrefix("Unmatched") ||
+                   trimmed.hasPrefix("Matched") || trimmed.hasPrefix("File list") ||
+                   trimmed.hasPrefix("received") {
+                    return
                 }
                 
-                // File name lines - means previous file finished
+                // File name / status lines
                 if trimmed.hasSuffix("/") {
                     currentProgress.bytesTransferred += lastFileBytes
                     lastFileBytes = 0
-                    currentProgress.currentFile = "Creating directory: \(trimmed)"
-                } else if !trimmed.isEmpty {
+                    currentProgress.currentFile = trimmed
+                } else {
                     currentProgress.bytesTransferred += lastFileBytes
                     lastFileBytes = 0
                     currentProgress.currentFile = trimmed
@@ -104,7 +106,6 @@ class RsyncWrapper {
                 }
                 currentProgress.currentBytesTransferred = currentProgress.bytesTransferred
                 progressHandler?(currentProgress)
-            }
         }, completion: { result in
             let duration = Date().timeIntervalSince(startTime)
             

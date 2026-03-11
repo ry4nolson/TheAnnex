@@ -45,12 +45,23 @@ class ShellHelper {
         task.executableURL = URL(fileURLWithPath: "/bin/bash")
         
         DispatchQueue.global(qos: .utility).async {
+            var lineBuffer = ""
             
             pipe.fileHandleForReading.readabilityHandler = { handle in
                 let data = handle.availableData
-                if !data.isEmpty, let output = String(data: data, encoding: .utf8) {
-                    DispatchQueue.main.async {
-                        outputHandler(output)
+                guard !data.isEmpty, let chunk = String(data: data, encoding: .utf8) else { return }
+                
+                lineBuffer += chunk
+                
+                // Only emit complete lines (ending with newline)
+                while let newlineRange = lineBuffer.range(of: "\n") {
+                    let line = String(lineBuffer[lineBuffer.startIndex..<newlineRange.lowerBound])
+                    lineBuffer = String(lineBuffer[newlineRange.upperBound...])
+                    if !line.isEmpty {
+                        let completeLine = line
+                        DispatchQueue.main.async {
+                            outputHandler(completeLine)
+                        }
                     }
                 }
             }

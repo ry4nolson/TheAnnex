@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct AboutView: View {
+    @ObservedObject private var updateChecker = UpdateChecker.shared
+    
     var body: some View {
         VStack(spacing: 16) {
             Spacer(minLength: 8)
@@ -58,6 +60,49 @@ struct AboutView: View {
                 LinkButton(title: "GitHub", icon: "link", url: "https://github.com/ry4nolson/TheAnnex")
                 LinkButton(title: "Releases", icon: "arrow.down.circle", url: "https://github.com/ry4nolson/TheAnnex/releases")
                 LinkButton(title: "Issues", icon: "exclamationmark.bubble", url: "https://github.com/ry4nolson/TheAnnex/issues")
+            }
+            
+            HStack(spacing: 8) {
+                if updateChecker.isChecking {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Checking for updates…")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } else if updateChecker.updateAvailable, let latest = updateChecker.latestVersion {
+                    Image(systemName: "arrow.down.circle.fill")
+                        .foregroundColor(.blue)
+                    Text("v\(latest) available")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                    Button("Download") {
+                        updateChecker.openDownloadPage()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                } else if let error = updateChecker.lastCheckError {
+                    Image(systemName: "exclamationmark.triangle")
+                        .foregroundColor(.orange)
+                        .font(.caption)
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } else if updateChecker.latestVersion != nil {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                        .font(.caption)
+                    Text("Up to date")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                if !updateChecker.isChecking {
+                    Button("Check for Updates") {
+                        updateChecker.checkForUpdates()
+                    }
+                    .buttonStyle(.link)
+                    .font(.caption)
+                }
             }
             
             Divider()

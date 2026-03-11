@@ -1,5 +1,11 @@
 import Foundation
 
+enum SymlinkState: String, Codable, Equatable, Hashable {
+    case local       // Normal local folder, no symlink active
+    case symlinked   // Local path is a symlink to NAS
+    case restoring   // Transitioning: unsymlinking or re-symlinking
+}
+
 struct SyncFolder: Codable, Identifiable, Equatable, Hashable {
     let id: UUID
     var name: String
@@ -11,6 +17,8 @@ struct SyncFolder: Codable, Identifiable, Equatable, Hashable {
     var lastSyncDate: Date?
     var syncSchedule: SyncSchedule?
     var fileFilters: FileFilters?
+    var symlinkMode: Bool
+    var symlinkState: SymlinkState
     
     init(id: UUID = UUID(),
          name: String,
@@ -21,7 +29,9 @@ struct SyncFolder: Codable, Identifiable, Equatable, Hashable {
          excludePatterns: [String] = SyncFolder.defaultExcludePatterns,
          lastSyncDate: Date? = nil,
          syncSchedule: SyncSchedule? = nil,
-         fileFilters: FileFilters? = nil) {
+         fileFilters: FileFilters? = nil,
+         symlinkMode: Bool = true,
+         symlinkState: SymlinkState = .local) {
         self.id = id
         self.name = name
         self.localPath = localPath
@@ -32,6 +42,8 @@ struct SyncFolder: Codable, Identifiable, Equatable, Hashable {
         self.lastSyncDate = lastSyncDate
         self.syncSchedule = syncSchedule
         self.fileFilters = fileFilters
+        self.symlinkMode = symlinkMode
+        self.symlinkState = symlinkState
     }
     
     static let defaultExcludePatterns = [

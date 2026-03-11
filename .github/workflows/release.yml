@@ -57,6 +57,8 @@ jobs:
             Utilities/NASDiscovery.swift \
             Utilities/KeychainHelper.swift \
             Utilities/AnnexQuotes.swift \
+            Utilities/SymlinkManager.swift \
+            Utilities/UpdateChecker.swift \
             Controllers/AppState.swift \
             Controllers/SyncEngine.swift \
             Controllers/NASMonitor.swift \
