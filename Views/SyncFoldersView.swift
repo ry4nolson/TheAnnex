@@ -1,0 +1,442 @@
+import SwiftUI
+
+struct SyncFoldersView: View {
+    @ObservedObject private var appState = AppState.shared
+    @ObservedObject private var syncEngine = SyncEngine.shared
+    @State private var showingAddFolder = false
+    @State private var selectedFolder: SyncFolder?
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Configured Sync Folders")
+                    .font(.headline)
+                Spacer()
+                Button(action: { showingAddFolder = true }) {
+                    Label("Add Folder", systemImage: "plus")
+                }
+                Button(action: syncAllFolders) {
+                    Label("Sync All", systemImage: "arrow.triangle.2.circlepath")
+                }
+                .disabled(appState.syncFolders.filter { $0.isEnabled }.isEmpty)
+            }
+            .padding()
+            
+            Divider()
+            
+            if appState.syncFolders.isEmpty {
+                VStack(spacing: 16) {
+                    Image(systemName: "folder.badge.questionmark")
+                        .font(.system(size: 48))
+                        .foregroundColor(.secondary)
+                    Text("No sync folders configured")
+                        .font(.title3)
+                        .foregroundColor(.secondary)
+                    Text("Add folders to sync between your Mac and NAS")
+                        .foregroundColor(.secondary)
+                    Button("Add Your First Folder") {
+                        showingAddFolder = true
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List {
+                    ForEach(appState.syncFolders) { folder in
+                        SyncFolderRow(folder: folder, onEdit: {
+                            selectedFolder = folder
+                        }, onSync: {
+                            syncEngine.queueSync(for: folder)
+                        })
+                    }
+                    .onDelete(perform: deleteFolders)
+                }
+            }
+            
+            Divider()
+            
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Active Syncs")
+                        .font(.headline)
+                    if !syncEngine.activeSyncJobs.isEmpty {
+                        Text("(\(syncEngine.activeSyncJobs.count))")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    if syncEngine.isPaused {
+                        Button("Resume") {
+                            syncEngine.resumeAll()
+                        }
+                    } else if !syncEngine.activeSyncJobs.isEmpty {
+                        Button("Pause All") {
+                            syncEngine.pauseAll()
+                        }
+                    }
+                }
+                .padding(.horizontal)
+                
+                if syncEngine.activeSyncJobs.isEmpty {
+                    HStack {
+                        Spacer()
+                        Text("No active syncs")
+                            .foregroundColor(.secondary)
+                            .font(.subheadline)
+                        Spacer()
+                    }
+                    .frame(maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        VStack(spacing: 8) {
+                            ForEach(syncEngine.activeSyncJobs) { job in
+                                ActiveSyncJobRow(job: job, onCancel: {
+                                    syncEngine.cancelSync(jobId: job.id)
+                                })
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                }
+            }
+            .padding(.vertical, 8)
+            .frame(height: 220)
+            .background(Color(NSColor.controlBackgroundColor))
+        }
+        .sheet(isPresented: $showingAddFolder) {
+            AddSyncFolderSheet(isPresented: $showingAddFolder)
+        }
+        .sheet(item: $selectedFolder) { folder in
+            EditSyncFolderSheet(folder: folder, isPresented: Binding(
+                get: { selectedFolder != nil },
+                set: { if !$0 { selectedFolder = nil } }
+            ))
+        }
+    }
+    
+    private func syncAllFolders() {
+        syncEngine.queueSyncAll(folders: appState.syncFolders)
+    }
+    
+    private func deleteFolders(at offsets: IndexSet) {
+        for index in offsets {
+            let folder = appState.syncFolders[index]
+            appState.removeSyncFolder(folder)
+        }
+    }
+}
+
+struct SyncFolderRow: View {
+    let folder: SyncFolder
+    let onEdit: () -> Void
+    let onSync: () -> Void
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: folder.isEnabled ? "checkmark.circle.fill" : "circle")
+                .foregroundColor(folder.isEnabled ? .green : .secondary)
+                .font(.title3)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(folder.name)
+                    .font(.headline)
+                HStack(spacing: 4) {
+                    Image(systemName: "folder")
+                        .font(.caption)
+                    Text(folder.localPath)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Image(systemName: "arrow.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Image(systemName: "externaldrive")
+                        .font(.caption)
+                    Text(folder.nasPath)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                if let lastSync = folder.lastSyncDate {
+                    Text("Last synced: \(lastSync, style: .relative) ago")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Spacer()
+            
+            Button(action: onSync) {
+                Image(systemName: "arrow.triangle.2.circlepath")
+            }
+            .help("Sync Now")
+            .disabled(!folder.isEnabled)
+            
+            Button(action: onEdit) {
+                Image(systemName: "pencil")
+            }
+            .help("Edit")
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+struct ActiveSyncJobRow: View {
+    @ObservedObject var job: SyncJob
+    let onCancel: () -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(job.folderName)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                Spacer()
+                if job.state == .running {
+                    Button(action: onCancel) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.red)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Cancel sync")
+                }
+                Text(job.state.rawValue.capitalized)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            if job.state == .running {
+                if job.totalFiles > 0 {
+                    ProgressView(value: Double(job.filesTransferred), total: Double(job.totalFiles))
+                        .progressViewStyle(.linear)
+                        .frame(height: 4)
+                } else {
+                    ProgressView()
+                        .progressViewStyle(.linear)
+                        .frame(height: 4)
+                }
+            }
+            
+            if let currentFile = job.currentFile {
+                Text(currentFile)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+            
+            HStack {
+                if job.totalFiles > 0 {
+                    let percentage = Int((Double(job.filesTransferred) / Double(job.totalFiles)) * 100)
+                    Text("\(job.filesTransferred) / \(job.totalFiles) files (\(percentage)%)")
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                } else {
+                    Text("\(job.filesTransferred) files")
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                }
+                Text("•")
+                    .font(.caption2)
+                Text(ByteCountFormatter.string(fromByteCount: job.bytesTransferred, countStyle: .file))
+                    .font(.caption2)
+                    .fontWeight(.medium)
+                if job.transferSpeed > 0 {
+                    Text("•")
+                        .font(.caption2)
+                    Text("\(ByteCountFormatter.string(fromByteCount: Int64(job.transferSpeed), countStyle: .file))/s")
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                }
+                Spacer()
+            }
+            .foregroundColor(.secondary)
+        }
+        .padding(8)
+        .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
+        .cornerRadius(6)
+    }
+}
+
+struct AddSyncFolderSheet: View {
+    @Binding var isPresented: Bool
+    @State private var selectedPreset: SyncFolder?
+    @State private var customName = ""
+    @State private var customLocalPath = ""
+    @State private var customNASPath = ""
+    @State private var useCustom = false
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("Add Sync Folder")
+                .font(.title2)
+                .fontWeight(.bold)
+            
+            Picker("Source", selection: $useCustom) {
+                Text("Preset Folders").tag(false)
+                Text("Custom Folder").tag(true)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+            
+            if useCustom {
+                VStack(alignment: .leading, spacing: 12) {
+                    TextField("Folder Name", text: $customName)
+                        .textFieldStyle(.roundedBorder)
+                    TextField("Local Path", text: $customLocalPath)
+                        .textFieldStyle(.roundedBorder)
+                    TextField("NAS Path", text: $customNASPath)
+                        .textFieldStyle(.roundedBorder)
+                }
+                .padding(.horizontal)
+            } else {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(SyncFolder.presets) { preset in
+                            Button(action: {
+                                selectedPreset = preset
+                            }) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(preset.name)
+                                            .font(.headline)
+                                        Text(preset.localPath)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        Text("→ \(preset.nasPath)")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    Spacer()
+                                    if selectedPreset?.id == preset.id {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.blue)
+                                    }
+                                }
+                                .padding(8)
+                                .background(selectedPreset?.id == preset.id ? Color.blue.opacity(0.1) : Color.clear)
+                                .cornerRadius(6)
+                            }
+                            .buttonStyle(.plain)
+                            
+                            if preset.id != SyncFolder.presets.last?.id {
+                                Divider()
+                            }
+                        }
+                    }
+                }
+                .frame(height: 200)
+                .padding(4)
+                .background(Color(NSColor.controlBackgroundColor))
+                .cornerRadius(8)
+            }
+            
+            HStack {
+                Button("Cancel") {
+                    isPresented = false
+                }
+                .keyboardShortcut(.cancelAction)
+                
+                Spacer()
+                
+                Button("Add") {
+                    addFolder()
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(!canAdd)
+            }
+            .padding()
+        }
+        .frame(width: 500, height: 400)
+        .padding()
+    }
+    
+    private var canAdd: Bool {
+        if useCustom {
+            return !customName.isEmpty && !customLocalPath.isEmpty && !customNASPath.isEmpty
+        } else {
+            return selectedPreset != nil
+        }
+    }
+    
+    private func addFolder() {
+        let folder: SyncFolder
+        if useCustom {
+            folder = SyncFolder(
+                name: customName,
+                localPath: customLocalPath,
+                nasPath: customNASPath
+            )
+        } else if let preset = selectedPreset {
+            folder = preset
+        } else {
+            return
+        }
+        
+        AppState.shared.addSyncFolder(folder)
+        isPresented = false
+    }
+}
+
+struct EditSyncFolderSheet: View {
+    let folder: SyncFolder
+    @Binding var isPresented: Bool
+    
+    @State private var isEnabled: Bool
+    @State private var excludePatterns: String
+    
+    init(folder: SyncFolder, isPresented: Binding<Bool>) {
+        self.folder = folder
+        self._isPresented = isPresented
+        self._isEnabled = State(initialValue: folder.isEnabled)
+        self._excludePatterns = State(initialValue: folder.excludePatterns.joined(separator: "\n"))
+    }
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Edit: \(folder.name)")
+                .font(.title2)
+                .fontWeight(.bold)
+            
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Toggle("Enabled", isOn: $isEnabled)
+                    Spacer()
+                }
+                
+                Text("Exclude Patterns (one per line):")
+                    .font(.subheadline)
+                TextEditor(text: $excludePatterns)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(height: 120)
+                    .border(Color.secondary.opacity(0.3))
+            }
+            .padding()
+            
+            HStack {
+                Button("Cancel") {
+                    isPresented = false
+                }
+                .keyboardShortcut(.cancelAction)
+                
+                Spacer()
+                
+                Button("Save") {
+                    saveChanges()
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .frame(width: 450)
+        .padding(20)
+    }
+    
+    private func saveChanges() {
+        var updated = folder
+        updated.isEnabled = isEnabled
+        updated.excludePatterns = excludePatterns
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        
+        AppState.shared.updateSyncFolder(updated)
+        isPresented = false
+    }
+}

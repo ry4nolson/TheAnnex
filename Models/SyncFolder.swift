@@ -1,0 +1,117 @@
+import Foundation
+
+struct SyncFolder: Codable, Identifiable, Equatable, Hashable {
+    let id: UUID
+    var name: String
+    var localPath: String
+    var nasPath: String
+    var nasDeviceId: UUID?
+    var isEnabled: Bool
+    var excludePatterns: [String]
+    var lastSyncDate: Date?
+    var syncSchedule: SyncSchedule?
+    var fileFilters: FileFilters?
+    
+    init(id: UUID = UUID(),
+         name: String,
+         localPath: String,
+         nasPath: String,
+         nasDeviceId: UUID? = nil,
+         isEnabled: Bool = true,
+         excludePatterns: [String] = SyncFolder.defaultExcludePatterns,
+         lastSyncDate: Date? = nil,
+         syncSchedule: SyncSchedule? = nil,
+         fileFilters: FileFilters? = nil) {
+        self.id = id
+        self.name = name
+        self.localPath = localPath
+        self.nasPath = nasPath
+        self.nasDeviceId = nasDeviceId
+        self.isEnabled = isEnabled
+        self.excludePatterns = excludePatterns
+        self.lastSyncDate = lastSyncDate
+        self.syncSchedule = syncSchedule
+        self.fileFilters = fileFilters
+    }
+    
+    static let defaultExcludePatterns = [
+        ".DS_Store",
+        ".Spotlight-V100",
+        ".Trashes",
+        ".fseventsd",
+        ".TemporaryItems",
+        "*.tmp",
+        "*.temp",
+        ".localized"
+    ]
+    
+    static let presets: [SyncFolder] = [
+        SyncFolder(
+            name: "Downloads",
+            localPath: NSHomeDirectory() + "/Downloads",
+            nasPath: "/Volumes/home/Downloads"
+        ),
+        SyncFolder(
+            name: "Documents",
+            localPath: NSHomeDirectory() + "/Documents",
+            nasPath: "/Volumes/home/Documents"
+        ),
+        SyncFolder(
+            name: "Pictures",
+            localPath: NSHomeDirectory() + "/Pictures",
+            nasPath: "/Volumes/home/Pictures"
+        ),
+        SyncFolder(
+            name: "Movies",
+            localPath: NSHomeDirectory() + "/Movies",
+            nasPath: "/Volumes/Plex/Movies"
+        ),
+        SyncFolder(
+            name: "Music",
+            localPath: NSHomeDirectory() + "/Music",
+            nasPath: "/Volumes/home/Music"
+        ),
+        SyncFolder(
+            name: "Desktop",
+            localPath: NSHomeDirectory() + "/Desktop",
+            nasPath: "/Volumes/home/Desktop"
+        )
+    ]
+}
+
+struct SyncSchedule: Codable, Equatable, Hashable {
+    var startHour: Int
+    var endHour: Int
+    var daysOfWeek: [Int]
+    var onlyOnWiFi: Bool
+    var wifiSSIDs: [String]
+    var onlyOnACPower: Bool
+    
+    init(startHour: Int = 0,
+         endHour: Int = 24,
+         daysOfWeek: [Int] = [0, 1, 2, 3, 4, 5, 6],
+         onlyOnWiFi: Bool = false,
+         wifiSSIDs: [String] = [],
+         onlyOnACPower: Bool = false) {
+        self.startHour = startHour
+        self.endHour = endHour
+        self.daysOfWeek = daysOfWeek
+        self.onlyOnWiFi = onlyOnWiFi
+        self.wifiSSIDs = wifiSSIDs
+        self.onlyOnACPower = onlyOnACPower
+    }
+}
+
+struct FileFilters: Codable, Equatable, Hashable {
+    var allowedExtensions: [String]
+    var maxFileSizeGB: Double?
+    var minFileSizeKB: Double?
+    
+    init(allowedExtensions: [String] = [],
+         maxFileSizeGB: Double? = nil,
+         minFileSizeKB: Double? = nil) {
+        self.allowedExtensions = allowedExtensions
+        self.maxFileSizeGB = maxFileSizeGB
+        self.minFileSizeKB = minFileSizeKB
+    }
+}
