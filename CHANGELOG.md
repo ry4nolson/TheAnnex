@@ -3,7 +3,9 @@
 All notable changes to The Annex will be documented in this file.
 
 
+
 ## [Unreleased]
+## [1.6.0] - 2026-03-12
 
 ### Added
 - **What's New tab** — in-app changelog viewer that parses `CHANGELOG.md` with collapsible version headers, color-coded section badges (Added/Fixed/Changed), and bold text rendering
