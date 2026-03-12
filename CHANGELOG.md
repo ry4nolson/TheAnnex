@@ -2,7 +2,9 @@
 
 All notable changes to The Annex will be documented in this file.
 
+
 ## [Unreleased]
+## [1.5.1] - 2026-03-12
 
 ### Changed
 - **"Check for Update" opens release page** — the update button in About now says "View Release" and opens the GitHub release page (with notes) instead of directly downloading the zip file
