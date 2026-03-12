@@ -36,7 +36,7 @@ class ShellHelper {
     }
     
     @discardableResult
-    static func runAsync(_ command: String, outputHandler: @escaping (String) -> Void, completion: @escaping (ShellResult) -> Void) -> Process {
+    static func runAsync(_ command: String, outputHandler: @escaping ([String]) -> Void, completion: @escaping (ShellResult) -> Void) -> Process {
         let task = Process()
         let pipe = Pipe()
         task.standardOutput = pipe
@@ -53,22 +53,25 @@ class ShellHelper {
                 
                 lineBuffer += chunk
                 
-                // Only emit complete lines (ending with newline)
+                var lines: [String] = []
                 while let newlineRange = lineBuffer.range(of: "\n") {
                     let line = String(lineBuffer[lineBuffer.startIndex..<newlineRange.lowerBound])
                     lineBuffer = String(lineBuffer[newlineRange.upperBound...])
                     if !line.isEmpty {
-                        let completeLine = line
-                        DispatchQueue.main.async {
-                            outputHandler(completeLine)
-                        }
+                        lines.append(line)
                     }
+                }
+                
+                if !lines.isEmpty {
+                    outputHandler(lines)
                 }
             }
             
             do {
                 try task.run()
                 task.waitUntilExit()
+                
+                pipe.fileHandleForReading.readabilityHandler = nil
                 
                 let result = ShellResult(
                     output: "",
@@ -80,6 +83,8 @@ class ShellHelper {
                     completion(result)
                 }
             } catch {
+                pipe.fileHandleForReading.readabilityHandler = nil
+                
                 let result = ShellResult(
                     output: "",
                     exitCode: 1,

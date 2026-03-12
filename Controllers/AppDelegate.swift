@@ -116,9 +116,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         SyncEngine.shared.$activeSyncJobs
             .sink { [weak self] jobs in
                 if !jobs.isEmpty {
-                    NASMonitor.shared.setState(.syncing)
+                    NASMonitor.shared.currentState = .syncing
                 } else if NASMonitor.shared.currentState == .syncing {
-                    NASMonitor.shared.setState(.connected)
+                    NASMonitor.shared.currentState = .connected
                 }
                 self?.updateIcon()
                 self?.buildMenu()
@@ -235,19 +235,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             for job in SyncEngine.shared.activeSyncJobs.prefix(3) {
                 let jobItem = NSMenuItem()
                 jobItem.title = "  \(job.folderName) - \(job.filesTransferred) files"
-                jobItem.isEnabled = false
+                let jobSubMenu = NSMenu()
+                let cancelJobItem = NSMenuItem(title: "Cancel", action: #selector(cancelSyncJob(_:)), keyEquivalent: "")
+                cancelJobItem.target = self
+                cancelJobItem.representedObject = job.id
+                jobSubMenu.addItem(cancelJobItem)
+                jobItem.submenu = jobSubMenu
                 menu.addItem(jobItem)
             }
             
-            if SyncEngine.shared.isPaused {
-                let resumeItem = NSMenuItem(title: "Resume Syncs", action: #selector(resumeSyncs), keyEquivalent: "")
-                resumeItem.target = self
-                menu.addItem(resumeItem)
-            } else {
-                let pauseItem = NSMenuItem(title: "Pause Syncs", action: #selector(pauseSyncs), keyEquivalent: "")
-                pauseItem.target = self
-                menu.addItem(pauseItem)
-            }
+            let cancelItem = NSMenuItem(title: "Cancel All Syncs", action: #selector(cancelSyncs), keyEquivalent: "")
+            cancelItem.target = self
+            menu.addItem(cancelItem)
         }
         
         menu.addItem(NSMenuItem.separator())
@@ -324,12 +323,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         SyncEngine.shared.queueSyncAll(folders: AppState.shared.syncFolders)
     }
     
-    @objc private func pauseSyncs() {
-        SyncEngine.shared.pauseAll()
+    @objc private func cancelSyncs() {
+        SyncEngine.shared.cancelAll()
     }
     
-    @objc private func resumeSyncs() {
-        SyncEngine.shared.resumeAll()
+    @objc private func cancelSyncJob(_ sender: NSMenuItem) {
+        guard let jobId = sender.representedObject as? UUID else { return }
+        SyncEngine.shared.cancelSync(jobId: jobId)
     }
     
     @objc private func openShare(_ sender: NSMenuItem) {

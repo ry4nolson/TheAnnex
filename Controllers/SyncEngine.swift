@@ -6,7 +6,6 @@ class SyncEngine: ObservableObject {
     
     @Published var activeSyncJobs: [SyncJob] = []
     @Published var syncQueue: [UUID] = []
-    @Published var isPaused: Bool = false
     @Published var statistics = Statistics()
     
     private var cancellables = Set<AnyCancellable>()
@@ -42,56 +41,38 @@ class SyncEngine: ObservableObject {
         }
     }
     
-    func pauseAll() {
-        isPaused = true
-        
-        for job in activeSyncJobs {
-            if let process = job.process, process.isRunning {
-                process.terminate()
-                job.state = .paused
-                log(.info, category: .sync, message: "Pausing sync for \(job.folderName)")
-            }
+    func cancelAll() {
+        // Mark all running jobs as cancelled on main thread first
+        let jobs = activeSyncJobs
+        for job in jobs where job.state == .running || job.state == .queued {
+            job.state = .cancelled
+            job.endDate = Date()
+            log(.info, category: .sync, message: "Cancelling sync for \(job.folderName)")
         }
         
-        log(.info, category: .sync, message: "All syncs paused")
-    }
-    
-    func resumeAll() {
-        isPaused = false
+        // Clear the queue
+        syncQueue_lock.lock()
+        syncQueue.removeAll()
+        currentSyncs = 0
+        syncQueue_lock.unlock()
         
-        for job in activeSyncJobs where job.state == .paused {
-            syncQueue_lock.lock()
-            if !syncQueue.contains(job.folderId) {
-                syncQueue.insert(job.folderId, at: 0)
-            }
-            syncQueue_lock.unlock()
-            
-            DispatchQueue.main.async { [weak self] in
-                if let index = self?.activeSyncJobs.firstIndex(where: { $0.id == job.id }) {
-                    self?.activeSyncJobs.remove(at: index)
+        activeSyncJobs.removeAll()
+        
+        // Terminate processes and log off main thread
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            for job in jobs {
+                if let process = job.process, process.isRunning {
+                    process.terminate()
                 }
             }
-            
-            syncQueue_lock.lock()
-            currentSyncs -= 1
-            syncQueue_lock.unlock()
-        }
-        
-        log(.info, category: .sync, message: "Syncs resumed")
-        
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            self?.processQueue()
+            self?.log(.info, category: .sync, message: "All syncs cancelled")
         }
     }
     
     func cancelSync(jobId: UUID) {
         if let index = activeSyncJobs.firstIndex(where: { $0.id == jobId }) {
             let job = activeSyncJobs[index]
-            
-            if let process = job.process, process.isRunning {
-                process.terminate()
-                log(.info, category: .sync, message: "Terminating rsync process for \(job.folderName)")
-            }
+            let folderName = job.folderName
             
             job.state = .cancelled
             job.endDate = Date()
@@ -101,20 +82,18 @@ class SyncEngine: ObservableObject {
             currentSyncs -= 1
             syncQueue_lock.unlock()
             
-            log(.info, category: .sync, message: "Cancelled sync for \(job.folderName)")
-            
+            // Everything else off main thread — log, terminate, processQueue
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                self?.log(.info, category: .sync, message: "Cancelled sync for \(folderName)")
+                if let process = job.process, process.isRunning {
+                    process.terminate()
+                }
                 self?.processQueue()
             }
         }
     }
     
     private func processQueue() {
-        guard !isPaused else {
-            log(.info, category: .sync, message: "Sync queue paused")
-            return
-        }
-        
         syncQueue_lock.lock()
         let queueCount = syncQueue.count
         let currentCount = currentSyncs
@@ -178,7 +157,7 @@ class SyncEngine: ObservableObject {
             dryRun: false,
             bandwidthLimit: bandwidthLimit,
             progressHandler: { [weak job] progress in
-                guard let job = job else { return }
+                guard let job = job, job.state == .running else { return }
                 DispatchQueue.main.async {
                     job.currentFile = progress.currentFile
                     job.filesTransferred = progress.filesTransferred
@@ -186,11 +165,10 @@ class SyncEngine: ObservableObject {
                     job.transferSpeed = progress.transferRate
                 }
             },
-            rawOutputHandler: { [weak job] line in
-                guard let job = job else { return }
+            rawOutputHandler: { [weak job] lines in
+                guard let job = job, job.state == .running else { return }
                 DispatchQueue.main.async {
-                    job.rawLog.append(line)
-                    // Cap at 500 lines to avoid memory bloat
+                    job.rawLog.append(contentsOf: lines)
                     if job.rawLog.count > 500 {
                         job.rawLog.removeFirst(job.rawLog.count - 500)
                     }
@@ -198,6 +176,11 @@ class SyncEngine: ObservableObject {
             },
             completion: { [weak self] result in
                 guard let self = self else { return }
+                
+                // If the job was cancelled, don't overwrite its state
+                if job.state == .cancelled {
+                    return
+                }
                 
                 self.log(.info, category: .sync, message: "Sync completion handler called for \(folder.name): success=\(result.success), files=\(result.filesTransferred), bytes=\(result.bytesTransferred)")
                 

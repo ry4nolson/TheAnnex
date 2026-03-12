@@ -66,13 +66,9 @@ struct SyncFoldersView: View {
                             .foregroundColor(.secondary)
                     }
                     Spacer()
-                    if syncEngine.isPaused {
-                        Button("Resume") {
-                            syncEngine.resumeAll()
-                        }
-                    } else if !syncEngine.activeSyncJobs.isEmpty {
-                        Button("Pause All") {
-                            syncEngine.pauseAll()
+                    if !syncEngine.activeSyncJobs.isEmpty {
+                        Button("Cancel All") {
+                            syncEngine.cancelAll()
                         }
                     }
                 }
@@ -282,34 +278,52 @@ struct ActiveSyncJobRow: View {
             .foregroundColor(.secondary)
             
             if showRawLog {
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 1) {
-                            ForEach(Array(job.rawLog.enumerated()), id: \.offset) { idx, line in
-                                Text(line)
-                                    .font(.system(size: 10, design: .monospaced))
-                                    .foregroundColor(.green)
-                                    .lineLimit(1)
-                                    .id(idx)
-                            }
-                        }
-                        .padding(6)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .frame(maxHeight: 120)
-                    .background(Color.black)
-                    .cornerRadius(4)
-                    .onChange(of: job.rawLog.count) { _ in
-                        if let last = job.rawLog.indices.last {
-                            proxy.scrollTo(last, anchor: .bottom)
-                        }
-                    }
-                }
+                RawLogView(job: job)
             }
         }
         .padding(8)
         .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
         .cornerRadius(6)
+    }
+}
+
+struct RawLogView: View {
+    let job: SyncJob
+    @State private var displayedLines: [String] = []
+    
+    let timer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
+    
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 1) {
+                    ForEach(Array(displayedLines.enumerated()), id: \.offset) { idx, line in
+                        Text(line)
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(.green)
+                            .lineLimit(1)
+                            .id(idx)
+                    }
+                }
+                .padding(6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxHeight: 120)
+            .background(Color.black)
+            .cornerRadius(4)
+            .onReceive(timer) { _ in
+                let latest = job.rawLog
+                if latest.count != displayedLines.count {
+                    displayedLines = latest
+                    if let last = displayedLines.indices.last {
+                        proxy.scrollTo(last, anchor: .bottom)
+                    }
+                }
+            }
+            .onAppear {
+                displayedLines = job.rawLog
+            }
+        }
     }
 }
 

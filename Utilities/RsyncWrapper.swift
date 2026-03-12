@@ -9,7 +9,7 @@ class RsyncWrapper {
         dryRun: Bool = false,
         bandwidthLimit: Int? = nil,
         progressHandler: ((RsyncProgress) -> Void)? = nil,
-        rawOutputHandler: ((String) -> Void)? = nil,
+        rawOutputHandler: (([String]) -> Void)? = nil,
         completion: @escaping (RsyncResult) -> Void
     ) -> Process? {
         let destPath = destination.hasSuffix("/") ? String(destination.dropLast()) : destination
@@ -54,57 +54,58 @@ class RsyncWrapper {
         var lastFileBytes: Int64 = 0
         let startTime = Date()
         
-        let process = ShellHelper.runAsync(command, outputHandler: { line in
-                let trimmed = line.trimmingCharacters(in: .whitespaces)
-                
-                guard !trimmed.isEmpty else { return }
-                
-                rawOutputHandler?(trimmed)
-                
-                // Parse progress lines like: "  1,234,567  45%  123.45kB/s    0:00:12"
-                if trimmed.contains("%") && !trimmed.hasPrefix("building") {
-                    let components = trimmed.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
-                    if let bytesStr = components.first,
-                       let fileBytes = Int64(bytesStr.replacingOccurrences(of: ",", with: "")) {
-                        // When progress resets to a smaller number, a new file started
-                        if fileBytes < lastFileBytes {
-                            currentProgress.bytesTransferred += lastFileBytes
-                            lastFileBytes = fileBytes
-                        } else {
-                            lastFileBytes = fileBytes
+        let process = ShellHelper.runAsync(command, outputHandler: { lines in
+                // Process all lines in the batch for accurate counting
+                for line in lines {
+                    let trimmed = line.trimmingCharacters(in: .whitespaces)
+                    guard !trimmed.isEmpty else { continue }
+                    
+                    // Parse progress lines like: "  1,234,567  45%  123.45kB/s    0:00:12"
+                    if trimmed.contains("%") && !trimmed.hasPrefix("building") {
+                        let components = trimmed.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
+                        if let bytesStr = components.first,
+                           let fileBytes = Int64(bytesStr.replacingOccurrences(of: ",", with: "")) {
+                            if fileBytes < lastFileBytes {
+                                currentProgress.bytesTransferred += lastFileBytes
+                                lastFileBytes = fileBytes
+                            } else {
+                                lastFileBytes = fileBytes
+                            }
+                            currentProgress.currentBytesTransferred = currentProgress.bytesTransferred + lastFileBytes
+                            currentProgress.transferRate = Date().timeIntervalSince(startTime) > 0
+                                ? Double(currentProgress.currentBytesTransferred) / Date().timeIntervalSince(startTime)
+                                : 0
                         }
-                        currentProgress.currentBytesTransferred = currentProgress.bytesTransferred + lastFileBytes
-                        currentProgress.transferRate = Date().timeIntervalSince(startTime) > 0
-                            ? Double(currentProgress.currentBytesTransferred) / Date().timeIntervalSince(startTime)
-                            : 0
-                        progressHandler?(currentProgress)
+                        continue
                     }
-                    return
+                    
+                    // Skip summary/status lines
+                    if trimmed.hasPrefix("sending") || trimmed.hasPrefix("sent") || 
+                       trimmed.hasPrefix("total size") || trimmed.contains("speedup") ||
+                       trimmed.hasPrefix("building file list") || trimmed.contains("to-check=") ||
+                       trimmed.hasPrefix("Number of") || trimmed.hasPrefix("Transfer starting") ||
+                       trimmed.hasPrefix("Total") || trimmed.hasPrefix("Unmatched") ||
+                       trimmed.hasPrefix("Matched") || trimmed.hasPrefix("File list") ||
+                       trimmed.hasPrefix("received") {
+                        continue
+                    }
+                    
+                    // File name / status lines
+                    if trimmed.hasSuffix("/") {
+                        currentProgress.bytesTransferred += lastFileBytes
+                        lastFileBytes = 0
+                        currentProgress.currentFile = trimmed
+                    } else {
+                        currentProgress.bytesTransferred += lastFileBytes
+                        lastFileBytes = 0
+                        currentProgress.currentFile = trimmed
+                        currentProgress.filesTransferred += 1
+                    }
+                    currentProgress.currentBytesTransferred = currentProgress.bytesTransferred
                 }
                 
-                // Skip summary/status lines
-                if trimmed.hasPrefix("sending") || trimmed.hasPrefix("sent") || 
-                   trimmed.hasPrefix("total size") || trimmed.contains("speedup") ||
-                   trimmed.hasPrefix("building file list") || trimmed.contains("to-check=") ||
-                   trimmed.hasPrefix("Number of") || trimmed.hasPrefix("Transfer starting") ||
-                   trimmed.hasPrefix("Total") || trimmed.hasPrefix("Unmatched") ||
-                   trimmed.hasPrefix("Matched") || trimmed.hasPrefix("File list") ||
-                   trimmed.hasPrefix("received") {
-                    return
-                }
-                
-                // File name / status lines
-                if trimmed.hasSuffix("/") {
-                    currentProgress.bytesTransferred += lastFileBytes
-                    lastFileBytes = 0
-                    currentProgress.currentFile = trimmed
-                } else {
-                    currentProgress.bytesTransferred += lastFileBytes
-                    lastFileBytes = 0
-                    currentProgress.currentFile = trimmed
-                    currentProgress.filesTransferred += 1
-                }
-                currentProgress.currentBytesTransferred = currentProgress.bytesTransferred
+                // Call handlers once per batch, not per line
+                rawOutputHandler?(lines)
                 progressHandler?(currentProgress)
         }, completion: { result in
             let duration = Date().timeIntervalSince(startTime)

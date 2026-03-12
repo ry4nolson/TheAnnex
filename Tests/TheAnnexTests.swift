@@ -314,7 +314,6 @@ func testSyncJobState() {
     runSuite("SyncJobState") {
         assertEqual(SyncJobState.queued.rawValue, "queued")
         assertEqual(SyncJobState.running.rawValue, "running")
-        assertEqual(SyncJobState.paused.rawValue, "paused")
         assertEqual(SyncJobState.completed.rawValue, "completed")
         assertEqual(SyncJobState.failed.rawValue, "failed")
         assertEqual(SyncJobState.cancelled.rawValue, "cancelled")
