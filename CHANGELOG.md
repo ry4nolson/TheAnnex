@@ -4,7 +4,9 @@ All notable changes to The Annex will be documented in this file.
 
 
 
+
 ## [Unreleased]
+## [1.6.1] - 2026-03-12
 
 ### Fixed
 - **CI build failure** — `ChangelogView.swift` and `CHANGELOG.md` resource copy were missing from `ci.yml` and `release.yml` GitHub Actions workflows
