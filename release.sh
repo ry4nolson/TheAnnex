@@ -64,8 +64,23 @@ echo "==> Updating version to $VERSION..."
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$PLIST"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION" "$PLIST"
 
+# Update CHANGELOG.md: rename [Unreleased] → [version] with today's date
+CHANGELOG="$SCRIPT_DIR/CHANGELOG.md"
+if [ -f "$CHANGELOG" ] && grep -q '## \[Unreleased\]' "$CHANGELOG"; then
+    TODAY=$(date +%Y-%m-%d)
+    sed -i '' "s/## \[Unreleased\]/## [$VERSION] - $TODAY/" "$CHANGELOG"
+    # Add a fresh [Unreleased] section at the top
+    sed -i '' "/^## \[$VERSION\]/i\\
+\\
+## [Unreleased]\\
+" "$CHANGELOG"
+    echo "==> Updated CHANGELOG.md: [Unreleased] → [$VERSION] - $TODAY"
+else
+    echo "==> No [Unreleased] section found in CHANGELOG.md, skipping"
+fi
+
 echo "==> Committing version bump..."
-git add "$PLIST"
+git add "$PLIST" "$CHANGELOG"
 git commit -m "Release $TAG"
 
 echo "==> Creating tag $TAG..."

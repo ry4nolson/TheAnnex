@@ -42,13 +42,13 @@ struct AboutView: View {
                 HStack(alignment: .top, spacing: 24) {
                     VStack(alignment: .leading, spacing: 3) {
                         FeatureItem(text: "Multi-NAS support with discovery")
-                        FeatureItem(text: "One-way sync (Local → NAS)")
+                        FeatureItem(text: "Sync & symlink folders to NAS")
                         FeatureItem(text: "Bandwidth throttling")
                     }
                     VStack(alignment: .leading, spacing: 3) {
                         FeatureItem(text: "Live monitoring & health checks")
                         FeatureItem(text: "Activity logging & statistics")
-                        FeatureItem(text: "Smart sync (WiFi, power-based)")
+                        FeatureItem(text: "Auto update checks")
                     }
                 }
             }

@@ -15,7 +15,7 @@ struct ActivityLogView: View {
             let matchesLevel = selectedLevel == nil || entry.level == selectedLevel
             let matchesCategory = selectedCategory == nil || entry.category == selectedCategory
             return matchesSearch && matchesLevel && matchesCategory
-        }.reversed()
+        }
     }
     
     var body: some View {

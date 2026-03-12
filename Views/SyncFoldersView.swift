@@ -5,6 +5,8 @@ struct SyncFoldersView: View {
     @ObservedObject private var syncEngine = SyncEngine.shared
     @State private var showingAddFolder = false
     @State private var selectedFolder: SyncFolder?
+    @State private var deleteError: String?
+    @State private var showDeleteError = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -109,6 +111,11 @@ struct SyncFoldersView: View {
                 set: { if !$0 { selectedFolder = nil } }
             ))
         }
+        .alert("Unsymlink Failed", isPresented: $showDeleteError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(deleteError ?? "Unknown error")
+        }
     }
     
     private func syncAllFolders() {
@@ -116,11 +123,19 @@ struct SyncFoldersView: View {
     }
     
     private func deleteFolder(_ folder: SyncFolder) {
-        // Unsymlink if currently symlinked
-        if folder.symlinkMode && folder.symlinkState == .symlinked {
-            let _ = SymlinkManager.shared.removeSymlink(localPath: folder.localPath)
-            SymlinkManager.shared.removeBackup(for: folder.localPath)
+        // Check actual filesystem, not just state flag
+        if SymlinkManager.shared.isSymlink(at: folder.localPath) {
+            let result = SymlinkManager.shared.removeSymlink(localPath: folder.localPath)
+            switch result {
+            case .success:
+                SymlinkManager.shared.removeBackup(for: folder.localPath)
+            case .failure(let error):
+                deleteError = "Cannot remove \(folder.name): failed to unsymlink \(folder.localPath).\n\n\(error.description)\n\nThe folder is still symlinked to the NAS. Resolve this manually before removing."
+                showDeleteError = true
+                return
+            }
         }
+        SymlinkManager.shared.removeBackup(for: folder.localPath)
         appState.removeSyncFolder(folder)
     }
 }
@@ -350,6 +365,7 @@ struct AddSyncFolderSheet: View {
     @State private var customLocalPath = ""
     @State private var customNASPath = ""
     @State private var useCustom = false
+    @State private var symlinkMode = true
     
     var body: some View {
         VStack(spacing: 20) {
@@ -449,6 +465,15 @@ struct AddSyncFolderSheet: View {
                 .cornerRadius(8)
             }
             
+            VStack(alignment: .leading, spacing: 4) {
+                Toggle("Symlink mode", isOn: $symlinkMode)
+                    .disabled(isProtectedPath)
+                Text(isProtectedPath ? "macOS protects this folder — sync only" : "Replace local folder with a symlink to the NAS after syncing")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal)
+            
             HStack {
                 Button("Cancel") {
                     isPresented = false
@@ -469,6 +494,13 @@ struct AddSyncFolderSheet: View {
         .padding()
     }
     
+    private var isProtectedPath: Bool {
+        let home = NSHomeDirectory()
+        let protectedPaths = [home + "/Desktop", home + "/Pictures", home + "/Documents", home + "/Music", home + "/Movies"]
+        let path = useCustom ? customLocalPath : (selectedPreset?.localPath ?? "")
+        return protectedPaths.contains(path)
+    }
+    
     private var canAdd: Bool {
         if useCustom {
             return !customName.isEmpty && !customLocalPath.isEmpty && !customNASPath.isEmpty
@@ -479,13 +511,19 @@ struct AddSyncFolderSheet: View {
     
     private func addFolder() {
         let folder: SyncFolder
+        let effectiveSymlink = isProtectedPath ? false : symlinkMode
         if useCustom {
-            folder = SyncFolder(
+            var f = SyncFolder(
                 name: customName,
                 localPath: customLocalPath,
                 nasPath: customNASPath
             )
-        } else if let preset = selectedPreset {
+            f.symlinkMode = effectiveSymlink
+            f.symlinkProtected = isProtectedPath
+            folder = f
+        } else if var preset = selectedPreset {
+            preset.symlinkMode = effectiveSymlink
+            preset.symlinkProtected = isProtectedPath
             folder = preset
         } else {
             return

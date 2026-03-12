@@ -89,13 +89,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 var updated = folder
                 var changed = false
                 
-                // Recover folders stuck in .restoring state from a previous crash/hang
-                if folder.symlinkState == .restoring {
-                    if SymlinkManager.shared.isSymlink(at: folder.localPath) {
-                        updated.symlinkState = .symlinked
-                    } else {
-                        updated.symlinkState = .local
-                    }
+                // Verify symlink state matches actual filesystem
+                let actuallySymlinked = SymlinkManager.shared.isSymlink(at: folder.localPath)
+                
+                if folder.symlinkState == .symlinked && !actuallySymlinked {
+                    updated.symlinkState = .local
+                    changed = true
+                    AppState.shared.addLog(ActivityEntry(level: .info, category: .sync, message: "\(folder.name) is no longer symlinked on disk — updated state to local"))
+                } else if folder.symlinkState == .restoring {
+                    updated.symlinkState = actuallySymlinked ? .symlinked : .local
                     changed = true
                     AppState.shared.addLog(ActivityEntry(level: .info, category: .sync, message: "Recovered \(folder.name) from stuck transitioning state → \(updated.symlinkState.rawValue)"))
                 }

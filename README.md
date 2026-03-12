@@ -12,7 +12,7 @@
 [![Tests](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/ry4nolson/TheAnnex/coverage/coverage.json)](Tests/TheAnnexTests.swift)
 [![Sponsor: Texas Beard Co](https://img.shields.io/badge/sponsor-Texas%20Beard%20Co-black.svg)](https://www.texasbeardcompany.com)
 
-A macOS menu bar app that quietly syncs your Mac's folders to your NAS — so everything feels local, even when it's not.
+A macOS menu bar app that syncs your Mac's folders to your NAS — and optionally symlinks them so your files live on the NAS while still feeling local.
 
 ## Installation
 
@@ -46,11 +46,18 @@ The app will be installed to `~/Applications/TheAnnex.app` and launched automati
 
 ### Sync Engine
 - Queue-based sync with concurrent support (max 2 simultaneous)
-- One-way sync: Local → NAS (authoritative backup model)
-- Pause/resume all syncs
+- One-way sync: Local → NAS (rsync with `--update` to skip newer files)
+- Cancel individual syncs or cancel all at once
 - Per-folder sync on demand or sync all at once
 - Rsync integration with progress tracking and bandwidth throttling
-- Editable local and NAS paths per sync folder
+- Editable local and NAS paths per sync folder with folder browser
+
+### Symlink Mode
+- After syncing, replace the local folder with a symlink to the NAS — apps read/write directly to the NAS
+- When the NAS goes offline, the symlink is removed and a local copy is restored automatically
+- When the NAS comes back online, local changes are synced and the symlink is re-created
+- **macOS-protected folders** (Desktop, Pictures, Documents, etc.) cannot be symlinked due to System Integrity Protection — these are automatically detected and run in sync-only mode with a clear "Sync only (macOS protected)" label
+- Symlink mode can be toggled per folder
 
 ### Monitoring
 - Live connection quality (latency, packet loss) per NAS
@@ -61,18 +68,23 @@ The app will be installed to `~/Applications/TheAnnex.app` and launched automati
 
 ### User Interface
 - **General** — NAS devices, network discovery, monitoring dashboard, startup options
-- **Sync Folders** — Visual list of sync pairs with status, add/edit/delete, browse paths
+- **Sync Folders** — Visual list of sync pairs with status, clickable paths that open in Finder, add/edit/delete with folder browser
 - **Activity Log** — Searchable, filterable log with export
 - **Statistics** — Transfer metrics, success rates, charts (macOS 13+)
 - **Advanced** — Bandwidth limits, WiFi filtering, power management, personality mode, custom rsync flags
-- **About** — Version info (read from bundle), app icon
+- **About** — Version info (read from bundle), check for updates, app icon
 
 ### Menu Bar
 - Dynamic status icon (connected/offline/syncing)
 - Quick access to sync folders and shares
-- Active sync progress
+- Active sync progress with per-job cancel
 - Recent activity feed
-- Pause/resume controls
+- Cancel all syncs
+
+### Updates
+- Automatic update check on startup — notifies when a new version is available on GitHub
+- One-click link to the latest release page
+- Manual check available in the About tab
 
 ### Security
 - Keychain integration for NAS passwords (per-device)
@@ -137,6 +149,8 @@ TheAnnex/
 ├── Utilities/
 │   ├── ShellHelper.swift
 │   ├── RsyncWrapper.swift
+│   ├── SymlinkManager.swift
+│   ├── UpdateChecker.swift
 │   ├── NetworkDetector.swift
 │   ├── NASDiscovery.swift
 │   ├── KeychainHelper.swift
