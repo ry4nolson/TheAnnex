@@ -3,7 +3,9 @@
 All notable changes to The Annex will be documented in this file.
 
 
+
 ## [Unreleased]
+## [1.5.0] - 2026-03-12
 ## [1.4.0] - 2026-03-12
 
 ### Added
