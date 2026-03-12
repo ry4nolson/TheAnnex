@@ -191,6 +191,9 @@ struct GeneralSettingsView: View {
         appState.updateCheckInterval(checkInterval)
         appState.launchAtLogin = launchAtLogin
         NASMonitor.shared.startMonitoring(interval: TimeInterval(checkInterval))
+        if let appDelegate = NSApp.delegate as? AppDelegate {
+            appDelegate.restartSyncTimer()
+        }
     }
     
     private func qualityColor(_ level: ConnectionQuality.QualityLevel) -> Color {

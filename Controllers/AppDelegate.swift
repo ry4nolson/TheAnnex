@@ -9,6 +9,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var mainWindowController = MainWindowController()
     
     private var cancellables = Set<AnyCancellable>()
+    private var syncTimer: Timer?
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -74,11 +75,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         
         NASMonitor.shared.startMonitoring(interval: AppState.shared.checkInterval)
+        startSyncTimer()
         
         AppState.shared.addLog(ActivityEntry(
             level: .info,
             category: .system,
-            message: "The Annex started"
+            message: "The Annex started — auto-sync every \(Int(AppState.shared.checkInterval))s"
         ))
         
         mainWindowController.showWindow()
@@ -141,7 +143,38 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func applicationWillTerminate(_ notification: Notification) {
+        syncTimer?.invalidate()
         NASMonitor.shared.stopMonitoring()
+    }
+    
+    // MARK: - Auto-Sync Timer
+    
+    private func startSyncTimer() {
+        let interval = AppState.shared.checkInterval
+        syncTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            self?.autoSync()
+        }
+        RunLoop.main.add(syncTimer!, forMode: .common)
+    }
+    
+    func restartSyncTimer() {
+        syncTimer?.invalidate()
+        syncTimer = nil
+        startSyncTimer()
+        let interval = Int(AppState.shared.checkInterval)
+        AppState.shared.addLog(ActivityEntry(level: .info, category: .system, message: "Sync interval updated to \(interval)s"))
+    }
+    
+    private func autoSync() {
+        // Only sync when NAS is online and no syncs are already running
+        guard NASMonitor.shared.currentState != .offline else { return }
+        guard SyncEngine.shared.activeSyncJobs.isEmpty else { return }
+        
+        let enabledFolders = AppState.shared.syncFolders.filter { $0.isEnabled }
+        guard !enabledFolders.isEmpty else { return }
+        
+        AppState.shared.addLog(ActivityEntry(level: .info, category: .sync, message: "Auto-sync triggered for \(enabledFolders.count) folder(s)"))
+        SyncEngine.shared.queueSyncAll(folders: enabledFolders)
     }
     
     private func setupObservers() {
