@@ -2,7 +2,9 @@
 
 All notable changes to The Annex will be documented in this file.
 
+
 ## [Unreleased]
+## [1.4.0] - 2026-03-12
 
 ### Added
 - **Symlink mode on folder creation** — toggle symlink mode when adding a new sync folder (preset or custom). Automatically disabled with explanation for macOS-protected folders
