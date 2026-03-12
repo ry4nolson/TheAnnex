@@ -75,8 +75,8 @@ struct AboutView: View {
                     Text("v\(latest) available")
                         .font(.caption)
                         .fontWeight(.medium)
-                    Button("Download") {
-                        updateChecker.openDownloadPage()
+                    Button("View Release") {
+                        updateChecker.openReleasePage()
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)

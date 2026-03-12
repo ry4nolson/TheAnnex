@@ -2,19 +2,22 @@
 
 All notable changes to The Annex will be documented in this file.
 
-
-
 ## [Unreleased]
+
+### Changed
+- **"Check for Update" opens release page** — the update button in About now says "View Release" and opens the GitHub release page (with notes) instead of directly downloading the zip file
+
 ## [1.5.0] - 2026-03-12
+
+### Fixed
+- **Auto-sync was never running** — periodic sync timer was missing entirely. `NASMonitor` only performed health checks but never triggered syncs. Added `syncTimer` to `AppDelegate` that fires on the configured check interval, syncing all enabled folders when the NAS is online and no syncs are active
+
 ## [1.4.0] - 2026-03-12
 
 ### Added
 - **Symlink mode on folder creation** — toggle symlink mode when adding a new sync folder (preset or custom). Automatically disabled with explanation for macOS-protected folders
 - **Startup state verification** — on launch, verifies symlink state matches the actual filesystem (e.g. if a symlink was removed manually, state is corrected to "local")
 - **Safe folder deletion** — removing a sync folder that is currently symlinked will unsymlink it first, restoring the local copy. If unsymlink fails, the folder record is preserved and an error is shown
-
-### Fixed
-- **Auto-sync was never running** — periodic sync timer was missing entirely. `NASMonitor` only performed health checks but never triggered syncs. Added `syncTimer` to `AppDelegate` that fires on the configured check interval, syncing all enabled folders when the NAS is online and no syncs are active
 
 ## [1.3.0] - 2026-03-12
 
