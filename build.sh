@@ -41,6 +41,7 @@ swiftc \
     "$SCRIPT_DIR/Views/StatisticsView.swift" \
     "$SCRIPT_DIR/Views/AdvancedSettingsView.swift" \
     "$SCRIPT_DIR/Views/AboutView.swift" \
+    "$SCRIPT_DIR/Views/ChangelogView.swift" \
     -o "$MACOS/$EXEC_NAME" \
     -framework Cocoa \
     -framework UserNotifications \
@@ -76,6 +77,11 @@ if [ -d "$ICONSET_DIR" ]; then
     iconutil -c icns -o "$RESOURCES/AppIcon.icns" "$ICONSET_TMP"
     rm -rf "$ICONSET_TMP"
     cp "$ICONSET_DIR/256.png" "$RESOURCES/AppIcon.png"
+fi
+
+# Copy changelog
+if [ -f "$SCRIPT_DIR/CHANGELOG.md" ]; then
+    cp "$SCRIPT_DIR/CHANGELOG.md" "$RESOURCES/CHANGELOG.md"
 fi
 
 # Copy sponsor logos

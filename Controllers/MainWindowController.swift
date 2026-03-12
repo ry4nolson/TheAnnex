@@ -71,8 +71,9 @@ struct SettingsSection: Identifiable, Hashable {
     static let statistics = SettingsSection(id: "statistics", title: "Statistics", icon: "chart.bar")
     static let advanced = SettingsSection(id: "advanced", title: "Advanced", icon: "slider.horizontal.3")
     static let about = SettingsSection(id: "about", title: "About", icon: "info.circle")
+    static let whatsNew = SettingsSection(id: "whatsNew", title: "What's New", icon: "sparkles")
     
-    static let allSections = [general, syncFolders, activityLog, statistics, advanced, about]
+    static let allSections = [general, syncFolders, activityLog, statistics, advanced, whatsNew, about]
 }
 
 struct MainWindowView: View {
@@ -120,6 +121,8 @@ struct MainWindowView: View {
             StatisticsView()
         case "advanced":
             AdvancedSettingsView()
+        case "whatsNew":
+            ChangelogView()
         case "about":
             AboutView()
         default:
