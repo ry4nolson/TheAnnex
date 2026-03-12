@@ -5,6 +5,11 @@ All notable changes to The Annex will be documented in this file.
 
 
 ## [Unreleased]
+
+### Fixed
+- **CI build failure** — `ChangelogView.swift` and `CHANGELOG.md` resource copy were missing from `ci.yml` and `release.yml` GitHub Actions workflows
+- **Compiler warnings** — suppressed unused variable warnings in `NASDiscovery.swift` and `NASMonitor.swift`
+
 ## [1.6.0] - 2026-03-12
 
 ### Added

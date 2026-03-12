@@ -70,6 +70,7 @@ jobs:
             Views/StatisticsView.swift \
             Views/AdvancedSettingsView.swift \
             Views/AboutView.swift \
+            Views/ChangelogView.swift \
             -o "$MACOS/$EXEC_NAME" \
             -framework Cocoa \
             -framework UserNotifications \
@@ -103,6 +104,11 @@ jobs:
             iconutil -c icns -o "$RESOURCES/AppIcon.icns" "$ICONSET_TMP"
             rm -rf "$ICONSET_TMP"
             cp "$ICONSET_DIR/256.png" "$RESOURCES/AppIcon.png"
+          fi
+
+          # Copy changelog
+          if [ -f "CHANGELOG.md" ]; then
+            cp CHANGELOG.md "$RESOURCES/CHANGELOG.md"
           fi
 
           # Copy sponsor logos

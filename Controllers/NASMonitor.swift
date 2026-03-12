@@ -65,7 +65,7 @@ class NASMonitor: ObservableObject {
                 let previousState = self.currentState
                 self.perDeviceOnline = onlineStatus
                 
-                let isInitialCheck = !self.hasCompletedInitialCheck
+                _ = !self.hasCompletedInitialCheck
                 self.hasCompletedInitialCheck = true
                 
                 if anyOnline {

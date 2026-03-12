@@ -57,7 +57,7 @@ class NASDiscovery: NSObject, ObservableObject {
         
         for result in results {
             switch result.endpoint {
-            case .service(let name, let type, let domain, _):
+            case .service(let name, let type, _, _):
                 let hostname = "\(name).local"
                 let device = DiscoveredNAS(
                     hostname: hostname,

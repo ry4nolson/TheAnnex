@@ -61,6 +61,7 @@ jobs:
             Views/StatisticsView.swift \
             Views/AdvancedSettingsView.swift \
             Views/AboutView.swift \
+            Views/ChangelogView.swift \
             -o "$MACOS/$EXEC_NAME" \
             -framework Cocoa \
             -framework UserNotifications \
