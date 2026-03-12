@@ -19,6 +19,7 @@ struct SyncFolder: Codable, Identifiable, Equatable, Hashable {
     var fileFilters: FileFilters?
     var symlinkMode: Bool
     var symlinkState: SymlinkState
+    var symlinkProtected: Bool
     
     init(id: UUID = UUID(),
          name: String,
@@ -31,7 +32,8 @@ struct SyncFolder: Codable, Identifiable, Equatable, Hashable {
          syncSchedule: SyncSchedule? = nil,
          fileFilters: FileFilters? = nil,
          symlinkMode: Bool = true,
-         symlinkState: SymlinkState = .local) {
+         symlinkState: SymlinkState = .local,
+         symlinkProtected: Bool = false) {
         self.id = id
         self.name = name
         self.localPath = localPath
@@ -44,6 +46,24 @@ struct SyncFolder: Codable, Identifiable, Equatable, Hashable {
         self.fileFilters = fileFilters
         self.symlinkMode = symlinkMode
         self.symlinkState = symlinkState
+        self.symlinkProtected = symlinkProtected
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        localPath = try container.decode(String.self, forKey: .localPath)
+        nasPath = try container.decode(String.self, forKey: .nasPath)
+        nasDeviceId = try container.decodeIfPresent(UUID.self, forKey: .nasDeviceId)
+        isEnabled = try container.decode(Bool.self, forKey: .isEnabled)
+        excludePatterns = try container.decode([String].self, forKey: .excludePatterns)
+        lastSyncDate = try container.decodeIfPresent(Date.self, forKey: .lastSyncDate)
+        syncSchedule = try container.decodeIfPresent(SyncSchedule.self, forKey: .syncSchedule)
+        fileFilters = try container.decodeIfPresent(FileFilters.self, forKey: .fileFilters)
+        symlinkMode = try container.decodeIfPresent(Bool.self, forKey: .symlinkMode) ?? true
+        symlinkState = try container.decodeIfPresent(SymlinkState.self, forKey: .symlinkState) ?? .local
+        symlinkProtected = try container.decodeIfPresent(Bool.self, forKey: .symlinkProtected) ?? false
     }
     
     static let defaultExcludePatterns = [

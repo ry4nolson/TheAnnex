@@ -258,6 +258,7 @@ class SyncEngine: ObservableObject {
                                             if errorDesc.contains("permission") || errorDesc.contains("Permission") || errorDesc.contains("not permitted") {
                                                 final_.symlinkMode = false
                                                 final_.symlinkState = .local
+                                                final_.symlinkProtected = true
                                                 self.log(.info, category: .sync, message: "Disabled symlink mode for \(folderName) — macOS protects this folder from being moved. Sync-only mode will be used instead.")
                                             } else {
                                                 final_.symlinkState = .local

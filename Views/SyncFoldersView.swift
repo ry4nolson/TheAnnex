@@ -145,7 +145,11 @@ struct SyncFolderRow: View {
                         .font(.caption)
                     Text(folder.localPath)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.accentColor)
+                        .underline()
+                        .onTapGesture {
+                            NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: folder.localPath)
+                        }
                     Image(systemName: "arrow.right")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -153,9 +157,21 @@ struct SyncFolderRow: View {
                         .font(.caption)
                     Text(folder.nasPath)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.accentColor)
+                        .underline()
+                        .onTapGesture {
+                            NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: folder.nasPath)
+                        }
                 }
-                if folder.symlinkMode {
+                if folder.symlinkProtected {
+                    HStack(spacing: 4) {
+                        Image(systemName: "lock.shield")
+                            .font(.caption)
+                        Text("Sync only (macOS protected)")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                } else if folder.symlinkMode {
                     HStack(spacing: 4) {
                         Image(systemName: folder.symlinkState == .symlinked ? "link" : "link.badge.plus")
                             .font(.caption)
@@ -352,10 +368,43 @@ struct AddSyncFolderSheet: View {
                 VStack(alignment: .leading, spacing: 12) {
                     TextField("Folder Name", text: $customName)
                         .textFieldStyle(.roundedBorder)
-                    TextField("Local Path", text: $customLocalPath)
-                        .textFieldStyle(.roundedBorder)
-                    TextField("NAS Path", text: $customNASPath)
-                        .textFieldStyle(.roundedBorder)
+                    HStack {
+                        TextField("Local Path", text: $customLocalPath)
+                            .textFieldStyle(.roundedBorder)
+                        Button {
+                            let panel = NSOpenPanel()
+                            panel.canChooseFiles = false
+                            panel.canChooseDirectories = true
+                            panel.allowsMultipleSelection = false
+                            panel.canCreateDirectories = true
+                            panel.directoryURL = URL(fileURLWithPath: customLocalPath.isEmpty ? NSHomeDirectory() : customLocalPath)
+                            if panel.runModal() == .OK, let url = panel.url {
+                                customLocalPath = url.path
+                                if customName.isEmpty {
+                                    customName = url.lastPathComponent
+                                }
+                            }
+                        } label: {
+                            Label("Browse", systemImage: "folder")
+                        }
+                    }
+                    HStack {
+                        TextField("NAS Path", text: $customNASPath)
+                            .textFieldStyle(.roundedBorder)
+                        Button {
+                            let panel = NSOpenPanel()
+                            panel.canChooseFiles = false
+                            panel.canChooseDirectories = true
+                            panel.allowsMultipleSelection = false
+                            panel.canCreateDirectories = true
+                            panel.directoryURL = URL(fileURLWithPath: customNASPath.isEmpty ? "/Volumes" : customNASPath)
+                            if panel.runModal() == .OK, let url = panel.url {
+                                customNASPath = url.path
+                            }
+                        } label: {
+                            Label("Browse", systemImage: "folder")
+                        }
+                    }
                 }
                 .padding(.horizontal)
             } else {
@@ -559,6 +608,7 @@ struct EditSyncFolderSheet: View {
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
+        panel.canCreateDirectories = true
         panel.directoryURL = URL(fileURLWithPath: localPath)
         if panel.runModal() == .OK, let url = panel.url {
             localPath = url.path
@@ -570,6 +620,7 @@ struct EditSyncFolderSheet: View {
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
+        panel.canCreateDirectories = true
         panel.directoryURL = URL(fileURLWithPath: "/Volumes")
         if panel.runModal() == .OK, let url = panel.url {
             nasPath = url.path

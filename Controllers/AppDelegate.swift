@@ -83,19 +83,37 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         mainWindowController.showWindow()
         
-        // Recover any folders stuck in .restoring state from a previous crash/hang
-        // Runs after showWindow so permission prompts don't block UI setup
+        // Startup recovery (runs on background thread after UI is visible)
         DispatchQueue.global(qos: .utility).async {
-            for folder in AppState.shared.syncFolders where folder.symlinkState == .restoring {
+            for folder in AppState.shared.syncFolders {
                 var updated = folder
-                if SymlinkManager.shared.isSymlink(at: folder.localPath) {
-                    updated.symlinkState = .symlinked
-                } else {
-                    updated.symlinkState = .local
-                }
-                DispatchQueue.main.async {
-                    AppState.shared.updateSyncFolder(updated)
+                var changed = false
+                
+                // Recover folders stuck in .restoring state from a previous crash/hang
+                if folder.symlinkState == .restoring {
+                    if SymlinkManager.shared.isSymlink(at: folder.localPath) {
+                        updated.symlinkState = .symlinked
+                    } else {
+                        updated.symlinkState = .local
+                    }
+                    changed = true
                     AppState.shared.addLog(ActivityEntry(level: .info, category: .sync, message: "Recovered \(folder.name) from stuck transitioning state → \(updated.symlinkState.rawValue)"))
+                }
+                
+                // Migrate: detect folders that were auto-disabled due to macOS protection
+                if !folder.symlinkMode && !folder.symlinkProtected && folder.symlinkState == .local && !SymlinkManager.shared.isSymlink(at: folder.localPath) {
+                    let home = NSHomeDirectory()
+                    let protectedPaths = [home + "/Desktop", home + "/Pictures", home + "/Documents", home + "/Music", home + "/Movies"]
+                    if protectedPaths.contains(folder.localPath) {
+                        updated.symlinkProtected = true
+                        changed = true
+                    }
+                }
+                
+                if changed {
+                    DispatchQueue.main.async {
+                        AppState.shared.updateSyncFolder(updated)
+                    }
                 }
             }
         }
