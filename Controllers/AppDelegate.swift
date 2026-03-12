@@ -83,6 +83,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         mainWindowController.showWindow()
         
+        // Recover any folders stuck in .restoring state from a previous crash/hang
+        // Runs after showWindow so permission prompts don't block UI setup
+        DispatchQueue.global(qos: .utility).async {
+            for folder in AppState.shared.syncFolders where folder.symlinkState == .restoring {
+                var updated = folder
+                if SymlinkManager.shared.isSymlink(at: folder.localPath) {
+                    updated.symlinkState = .symlinked
+                } else {
+                    updated.symlinkState = .local
+                }
+                DispatchQueue.main.async {
+                    AppState.shared.updateSyncFolder(updated)
+                    AppState.shared.addLog(ActivityEntry(level: .info, category: .sync, message: "Recovered \(folder.name) from stuck transitioning state → \(updated.symlinkState.rawValue)"))
+                }
+            }
+        }
+        
         // Check for updates on startup (slight delay so window is visible)
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             UpdateChecker.shared.checkForUpdates { hasUpdate in

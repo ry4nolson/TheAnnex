@@ -6,7 +6,10 @@ class AppState: ObservableObject {
     
     @Published var nasDevices: [NASDevice] = []
     @Published var syncFolders: [SyncFolder] = []
-    @Published var activityLog: [ActivityEntry] = []
+    var activityLog: [ActivityEntry] = []
+    private var pendingLogEntries: [ActivityEntry] = []
+    private let logLock = NSLock()
+    private var logFlushScheduled = false
     @Published var statistics = Statistics()
     
     private let defaults = UserDefaults.standard
@@ -141,10 +144,35 @@ class AppState: ObservableObject {
     }
     
     func addLog(_ entry: ActivityEntry) {
-        activityLog.insert(entry, at: 0)
-        if activityLog.count > maxLogEntries {
-            activityLog.removeLast()
+        logLock.lock()
+        pendingLogEntries.append(entry)
+        let needsSchedule = !logFlushScheduled
+        logFlushScheduled = true
+        logLock.unlock()
+        
+        if needsSchedule {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.flushLogs()
+            }
         }
+    }
+    
+    private func flushLogs() {
+        logLock.lock()
+        let entries = pendingLogEntries
+        pendingLogEntries.removeAll(keepingCapacity: true)
+        logFlushScheduled = false
+        logLock.unlock()
+        
+        guard !entries.isEmpty else { return }
+        
+        for entry in entries {
+            activityLog.insert(entry, at: 0)
+        }
+        if activityLog.count > maxLogEntries {
+            activityLog.removeLast(activityLog.count - maxLogEntries)
+        }
+        objectWillChange.send()
         saveActivityLog()
     }
     

@@ -254,8 +254,15 @@ class SyncEngine: ObservableObject {
                                                 }
                                             }
                                         case .failure(let error):
-                                            final_.symlinkState = .local
-                                            self.log(.error, category: .sync, message: "Symlink failed for \(folderName): \(error)")
+                                            let errorDesc = "\(error)"
+                                            if errorDesc.contains("permission") || errorDesc.contains("Permission") || errorDesc.contains("not permitted") {
+                                                final_.symlinkMode = false
+                                                final_.symlinkState = .local
+                                                self.log(.info, category: .sync, message: "Disabled symlink mode for \(folderName) — macOS protects this folder from being moved. Sync-only mode will be used instead.")
+                                            } else {
+                                                final_.symlinkState = .local
+                                                self.log(.error, category: .sync, message: "Symlink failed for \(folderName): \(error)")
+                                            }
                                         }
                                         AppState.shared.updateSyncFolder(final_)
                                     }

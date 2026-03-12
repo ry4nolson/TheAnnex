@@ -85,7 +85,15 @@ class SymlinkManager {
                 try fm.moveItem(atPath: localPath, toPath: backup)
                 backupPath = backup
             } catch {
-                return .failure(.backupFailed("Failed to backup \(localPath): \(error.localizedDescription)"))
+                NSLog("[SYMLINK] FileManager.moveItem failed for %@: %@, trying shell mv", localPath, error.localizedDescription)
+                // Fallback: use shell mv for macOS-protected directories
+                let result = ShellHelper.run("mv \"\(localPath)\" \"\(backup)\"")
+                if result.isSuccess {
+                    backupPath = backup
+                } else {
+                    NSLog("[SYMLINK] Shell mv also failed for %@: %@", localPath, result.error ?? result.output)
+                    return .failure(.backupFailed("Failed to backup \(localPath): \(error.localizedDescription)"))
+                }
             }
         }
         
@@ -93,11 +101,19 @@ class SymlinkManager {
         do {
             try fm.createSymbolicLink(atPath: localPath, withDestinationPath: nasPath)
         } catch {
-            // Restore backup on failure
-            if let backup = backupPath {
-                try? fm.moveItem(atPath: backup, toPath: localPath)
+            NSLog("[SYMLINK] FileManager.createSymbolicLink failed for %@: %@, trying shell ln", localPath, error.localizedDescription)
+            let lnResult = ShellHelper.run("ln -s \"\(nasPath)\" \"\(localPath)\"")
+            if !lnResult.isSuccess {
+                NSLog("[SYMLINK] Shell ln also failed for %@: %@", localPath, lnResult.error ?? lnResult.output)
+                // Restore backup on failure
+                if let backup = backupPath {
+                    try? fm.moveItem(atPath: backup, toPath: localPath)
+                    if !fm.fileExists(atPath: localPath) {
+                        _ = ShellHelper.run("mv \"\(backup)\" \"\(localPath)\"")
+                    }
+                }
+                return .failure(.symlinkCreationFailed("Failed to create symlink: \(error.localizedDescription)"))
             }
-            return .failure(.symlinkCreationFailed("Failed to create symlink: \(error.localizedDescription)"))
         }
         
         return .success(backupPath)
@@ -120,7 +136,11 @@ class SymlinkManager {
         do {
             try fm.removeItem(atPath: localPath)
         } catch {
-            return .failure(.restoreFailed("Failed to remove symlink: \(error.localizedDescription)"))
+            NSLog("[SYMLINK] FileManager.removeItem failed for %@: %@, trying shell rm", localPath, error.localizedDescription)
+            let rmResult = ShellHelper.run("rm \"\(localPath)\"")
+            if !rmResult.isSuccess {
+                return .failure(.restoreFailed("Failed to remove symlink: \(error.localizedDescription)"))
+            }
         }
         
         // Restore backup if available
@@ -129,9 +149,13 @@ class SymlinkManager {
             do {
                 try fm.moveItem(atPath: backup, toPath: localPath)
             } catch {
-                // Backup restore failed — create empty folder as fallback
-                try? fm.createDirectory(atPath: localPath, withIntermediateDirectories: true)
-                return .failure(.restoreFailed("Backup restore failed, created empty folder: \(error.localizedDescription)"))
+                NSLog("[SYMLINK] FileManager.moveItem restore failed for %@: %@, trying shell mv", localPath, error.localizedDescription)
+                let mvResult = ShellHelper.run("mv \"\(backup)\" \"\(localPath)\"")
+                if !mvResult.isSuccess {
+                    // Both failed — create empty folder as fallback
+                    try? fm.createDirectory(atPath: localPath, withIntermediateDirectories: true)
+                    return .failure(.restoreFailed("Backup restore failed, created empty folder: \(error.localizedDescription)"))
+                }
             }
         } else {
             // No backup — create empty folder
