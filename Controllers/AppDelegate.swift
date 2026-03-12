@@ -83,19 +83,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         mainWindowController.showWindow()
         
-        // Check for updates on startup
-        UpdateChecker.shared.checkForUpdates { hasUpdate in
-            if hasUpdate, let latest = UpdateChecker.shared.latestVersion {
-                DispatchQueue.main.async {
+        // Check for updates on startup (slight delay so window is visible)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            UpdateChecker.shared.checkForUpdates { hasUpdate in
+                if hasUpdate, let latest = UpdateChecker.shared.latestVersion {
+                    NSApp.activate(ignoringOtherApps: true)
                     let alert = NSAlert()
                     alert.messageText = "Update Available"
                     alert.informativeText = "The Annex v\(latest) is available. You're running v\(UpdateChecker.shared.currentVersion)."
                     alert.alertStyle = .informational
-                    alert.addButton(withTitle: "Download")
+                    alert.addButton(withTitle: "View Release")
                     alert.addButton(withTitle: "Later")
                     
                     if alert.runModal() == .alertFirstButtonReturn {
-                        UpdateChecker.shared.openDownloadPage()
+                        UpdateChecker.shared.openReleasePage()
                     }
                 }
             }

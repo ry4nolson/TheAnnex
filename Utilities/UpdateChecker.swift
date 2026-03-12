@@ -8,6 +8,7 @@ class UpdateChecker: ObservableObject {
     
     @Published var latestVersion: String?
     @Published var downloadURL: String?
+    @Published var releaseURL: String?
     @Published var isChecking = false
     @Published var updateAvailable = false
     @Published var lastCheckError: String?
@@ -98,24 +99,32 @@ class UpdateChecker: ObservableObject {
                 
                 DispatchQueue.main.async {
                     self.latestVersion = version
+                    self.releaseURL = htmlURL
                     self.downloadURL = assetURL
                     self.updateAvailable = hasUpdate
                     self.isChecking = false
+                    completion?(hasUpdate)
                 }
-                completion?(hasUpdate)
                 
             } catch {
                 DispatchQueue.main.async {
                     self.isChecking = false
                     self.lastCheckError = "Parse error: \(error.localizedDescription)"
+                    completion?(false)
                 }
-                completion?(false)
             }
         }.resume()
     }
     
     func openDownloadPage() {
         let urlString = downloadURL ?? "https://github.com/\(repoOwner)/\(repoName)/releases/latest"
+        if let url = URL(string: urlString) {
+            NSWorkspace.shared.open(url)
+        }
+    }
+    
+    func openReleasePage() {
+        let urlString = releaseURL ?? "https://github.com/\(repoOwner)/\(repoName)/releases/latest"
         if let url = URL(string: urlString) {
             NSWorkspace.shared.open(url)
         }
