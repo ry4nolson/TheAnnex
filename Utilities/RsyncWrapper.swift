@@ -8,6 +8,7 @@ class RsyncWrapper {
         excludePatterns: [String] = [],
         dryRun: Bool = false,
         bandwidthLimit: Int? = nil,
+        customFlags: [String] = [],
         progressHandler: ((RsyncProgress) -> Void)? = nil,
         rawOutputHandler: (([String]) -> Void)? = nil,
         completion: @escaping (RsyncResult) -> Void
@@ -39,6 +40,10 @@ class RsyncWrapper {
         
         for pattern in excludePatterns {
             args.append("--exclude=\(pattern)")
+        }
+        
+        for flag in customFlags where !flag.isEmpty {
+            args.append(flag)
         }
         
         args.append(contentsOf: [source.hasSuffix("/") ? source : source + "/", destination.hasSuffix("/") ? destination : destination + "/"])

@@ -24,8 +24,8 @@ class ShellHelper {
             }
         }
         
-        task.waitUntilExit()
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        task.waitUntilExit()
         let output = String(data: data, encoding: .utf8) ?? ""
         
         return ShellResult(
@@ -46,10 +46,16 @@ class ShellHelper {
         
         DispatchQueue.global(qos: .utility).async {
             var lineBuffer = ""
+            var accumulatedOutput = ""
+            let outputLock = NSLock()
             
             pipe.fileHandleForReading.readabilityHandler = { handle in
                 let data = handle.availableData
                 guard !data.isEmpty, let chunk = String(data: data, encoding: .utf8) else { return }
+                
+                outputLock.lock()
+                accumulatedOutput += chunk
+                outputLock.unlock()
                 
                 lineBuffer += chunk
                 
@@ -73,8 +79,12 @@ class ShellHelper {
                 
                 pipe.fileHandleForReading.readabilityHandler = nil
                 
+                outputLock.lock()
+                let finalOutput = accumulatedOutput
+                outputLock.unlock()
+                
                 let result = ShellResult(
-                    output: "",
+                    output: finalOutput,
                     exitCode: task.terminationStatus,
                     error: nil
                 )

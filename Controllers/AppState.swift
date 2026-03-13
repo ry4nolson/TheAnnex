@@ -23,6 +23,10 @@ class AppState: ObservableObject {
         static let bandwidthLimit = "bandwidthLimit"
         static let launchAtLogin = "launchAtLogin"
         static let activityLog = "activityLog"
+        static let wifiFilterEnabled = "wifiFilterEnabled"
+        static let allowedSSIDs = "allowedSSIDs"
+        static let acPowerOnly = "acPowerOnly"
+        static let customRsyncFlags = "customRsyncFlags"
         
         static let defaultInterval = 60
     }
@@ -43,6 +47,36 @@ class AppState: ObservableObject {
     
     var bandwidthLimitKBps: Int {
         defaults.integer(forKey: Keys.bandwidthLimit)
+    }
+    
+    var wifiFilterEnabled: Bool {
+        get { defaults.bool(forKey: Keys.wifiFilterEnabled) }
+        set { defaults.set(newValue, forKey: Keys.wifiFilterEnabled) }
+    }
+    
+    var allowedSSIDs: [String] {
+        get {
+            let raw = defaults.string(forKey: Keys.allowedSSIDs) ?? ""
+            return raw.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        }
+        set {
+            defaults.set(newValue.joined(separator: ", "), forKey: Keys.allowedSSIDs)
+        }
+    }
+    
+    var allowedSSIDsRaw: String {
+        get { defaults.string(forKey: Keys.allowedSSIDs) ?? "" }
+        set { defaults.set(newValue, forKey: Keys.allowedSSIDs) }
+    }
+    
+    var acPowerOnly: Bool {
+        get { defaults.bool(forKey: Keys.acPowerOnly) }
+        set { defaults.set(newValue, forKey: Keys.acPowerOnly) }
+    }
+    
+    var customRsyncFlags: String {
+        get { defaults.string(forKey: Keys.customRsyncFlags) ?? "" }
+        set { defaults.set(newValue, forKey: Keys.customRsyncFlags) }
     }
     
     var launchAtLogin: Bool {
@@ -191,6 +225,8 @@ class AppState: ObservableObject {
     
     func clearLogs() {
         activityLog.removeAll()
+        objectWillChange.send()
+        saveActivityLog()
     }
     
     func exportLogs() -> String {

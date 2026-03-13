@@ -81,7 +81,8 @@ jobs:
             -framework IOKit \
             -framework Security \
             -framework UniformTypeIdentifiers \
-            -framework Network
+            -framework Network \
+            -framework ServiceManagement
 
           echo "==> Copying Info.plist..."
           cp Info.plist "$CONTENTS/Info.plist"

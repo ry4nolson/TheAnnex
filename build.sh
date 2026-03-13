@@ -52,7 +52,8 @@ swiftc \
     -framework IOKit \
     -framework Security \
     -framework UniformTypeIdentifiers \
-    -framework Network
+    -framework Network \
+    -framework ServiceManagement
 
 echo "==> Copying Info.plist..."
 cp "$SCRIPT_DIR/Info.plist" "$CONTENTS/Info.plist"

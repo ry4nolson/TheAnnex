@@ -40,7 +40,8 @@ swiftc \
     -framework IOKit \
     -framework Security \
     -framework Network \
-    -framework UniformTypeIdentifiers
+    -framework UniformTypeIdentifiers \
+    -framework ServiceManagement
 
 echo "==> Running tests..."
 "$TEST_BINARY"

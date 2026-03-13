@@ -116,11 +116,19 @@ struct AdvancedSettingsView: View {
     private func loadSettings() {
         let limit = AppState.shared.bandwidthLimitKBps
         bandwidthLimit = limit > 0 ? "\(limit)" : "0"
+        enableWiFiFilter = AppState.shared.wifiFilterEnabled
+        allowedSSIDs = AppState.shared.allowedSSIDsRaw
+        onlyOnACPower = AppState.shared.acPowerOnly
+        customRsyncFlags = AppState.shared.customRsyncFlags
     }
     
     private func saveSettings() {
         let limit = Int(bandwidthLimit) ?? 0
         AppState.shared.updateBandwidthLimit(limit)
+        AppState.shared.wifiFilterEnabled = enableWiFiFilter
+        AppState.shared.allowedSSIDsRaw = allowedSSIDs
+        AppState.shared.acPowerOnly = onlyOnACPower
+        AppState.shared.customRsyncFlags = customRsyncFlags
         
         showingSaveAlert = true
     }

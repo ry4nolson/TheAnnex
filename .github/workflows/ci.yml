@@ -72,7 +72,8 @@ jobs:
             -framework IOKit \
             -framework Security \
             -framework UniformTypeIdentifiers \
-            -framework Network
+            -framework Network \
+            -framework ServiceManagement
 
           cp Info.plist "$CONTENTS/Info.plist"
 

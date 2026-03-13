@@ -19,11 +19,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         setupObservers()
         
-        SyncEngine.shared.onLog = { [weak self] entry in
+        SyncEngine.shared.onLog = { entry in
             AppState.shared.addLog(entry)
-            DispatchQueue.main.async {
-                self?.buildMenu()
-            }
         }
         
         NASMonitor.shared.onLog = { entry in
@@ -169,6 +166,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Only sync when NAS is online and no syncs are already running
         guard NASMonitor.shared.currentState != .offline else { return }
         guard SyncEngine.shared.activeSyncJobs.isEmpty else { return }
+        
+        // WiFi filter: skip if not on an allowed network
+        if AppState.shared.wifiFilterEnabled {
+            let allowed = AppState.shared.allowedSSIDs
+            if !allowed.isEmpty && !NetworkDetector.isConnectedToWiFi(ssids: allowed) {
+                let current = NetworkDetector.getCurrentWiFiSSID() ?? "none"
+                AppState.shared.addLog(ActivityEntry(level: .info, category: .sync, message: "Auto-sync skipped — WiFi \"\(current)\" not in allowed list"))
+                return
+            }
+        }
+        
+        // AC power filter: skip if on battery
+        if AppState.shared.acPowerOnly && !NetworkDetector.isOnACPower() {
+            AppState.shared.addLog(ActivityEntry(level: .info, category: .sync, message: "Auto-sync skipped — running on battery"))
+            return
+        }
         
         let enabledFolders = AppState.shared.syncFolders.filter { $0.isEnabled }
         guard !enabledFolders.isEmpty else { return }

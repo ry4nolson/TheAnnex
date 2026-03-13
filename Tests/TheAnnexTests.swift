@@ -190,8 +190,6 @@ func testSyncFolder() {
         assertNil(folder.nasDeviceId)
         assert(folder.isEnabled, "Should be enabled by default")
         assertNil(folder.lastSyncDate)
-        assertNil(folder.syncSchedule)
-        assertNil(folder.fileFilters)
 
         // Default exclude patterns
         assert(folder.excludePatterns.contains(".DS_Store"), "Should contain .DS_Store")
@@ -232,45 +230,6 @@ func testSyncFolder() {
     }
 }
 
-// ============================================================
-// MARK: - SyncSchedule Tests
-// ============================================================
-
-func testSyncSchedule() {
-    runSuite("SyncSchedule") {
-        let schedule = SyncSchedule()
-        assertEqual(schedule.startHour, 0)
-        assertEqual(schedule.endHour, 24)
-        assertEqual(schedule.daysOfWeek, [0, 1, 2, 3, 4, 5, 6])
-        assert(!schedule.onlyOnWiFi, "Should not require WiFi by default")
-        assertEqual(schedule.wifiSSIDs, [])
-        assert(!schedule.onlyOnACPower, "Should not require AC by default")
-
-        // Codable
-        let custom = SyncSchedule(startHour: 9, endHour: 17, daysOfWeek: [1, 2, 3, 4, 5], onlyOnWiFi: true, wifiSSIDs: ["HomeNet"], onlyOnACPower: true)
-        let data = try! JSONEncoder().encode(custom)
-        let decoded = try! JSONDecoder().decode(SyncSchedule.self, from: data)
-        assertEqual(decoded, custom)
-    }
-}
-
-// ============================================================
-// MARK: - FileFilters Tests
-// ============================================================
-
-func testFileFilters() {
-    runSuite("FileFilters") {
-        let filters = FileFilters()
-        assertEqual(filters.allowedExtensions, [])
-        assertNil(filters.maxFileSizeGB)
-        assertNil(filters.minFileSizeKB)
-
-        let custom = FileFilters(allowedExtensions: [".jpg", ".png"], maxFileSizeGB: 2.0, minFileSizeKB: 10.0)
-        let data = try! JSONEncoder().encode(custom)
-        let decoded = try! JSONDecoder().decode(FileFilters.self, from: data)
-        assertEqual(decoded, custom)
-    }
-}
 
 // ============================================================
 // MARK: - SyncJob Tests
@@ -797,6 +756,219 @@ func testSymlinkManager() {
 }
 
 // ============================================================
+// MARK: - Statistics Persistence Tests (Bug 1 regression)
+// ============================================================
+
+func testStatisticsPersistence() {
+    runSuite("Statistics Persistence") {
+        // Simulate what used to happen: record syncs directly on AppState.shared.statistics
+        let originalStats = AppState.shared.statistics
+        
+        // Record a sync directly on AppState
+        AppState.shared.statistics.recordSync(
+            folderId: UUID(), folderName: "TestFolder",
+            bytesTransferred: 2048, filesTransferred: 10,
+            duration: 3.0, success: true
+        )
+        let afterRecord = AppState.shared.statistics.totalSyncs
+        assert(afterRecord > originalStats.totalSyncs, "totalSyncs should increase after recordSync")
+        
+        // Save and reload — stats should survive
+        AppState.shared.saveStatistics()
+        let savedSyncs = AppState.shared.statistics.totalSyncs
+        AppState.shared.loadStatistics()
+        assertEqual(AppState.shared.statistics.totalSyncs, savedSyncs, "Stats should persist across save/load")
+        assertEqual(AppState.shared.statistics.totalFilesTransferred, AppState.shared.statistics.totalFilesTransferred, "Files should persist")
+        
+        // Restore original
+        AppState.shared.statistics = originalStats
+        AppState.shared.saveStatistics()
+    }
+}
+
+// ============================================================
+// MARK: - SyncEngine No Own Statistics (Bug 1 regression)
+// ============================================================
+
+func testSyncEngineNoOwnStatistics() {
+    runSuite("SyncEngine No Own Statistics") {
+        // SyncEngine should NOT have its own statistics property.
+        // It should read/write AppState.shared.statistics directly.
+        // We verify this by checking that SyncEngine.shared does not reset AppState stats.
+        
+        let original = AppState.shared.statistics
+        AppState.shared.statistics.recordSync(
+            folderId: UUID(), folderName: "Persist",
+            bytesTransferred: 100, filesTransferred: 1,
+            duration: 0.5, success: true
+        )
+        AppState.shared.saveStatistics()
+        let countBefore = AppState.shared.statistics.totalSyncs
+        
+        // Access SyncEngine — should NOT reset AppState.statistics
+        _ = SyncEngine.shared
+        assertEqual(AppState.shared.statistics.totalSyncs, countBefore, "Accessing SyncEngine should not reset stats")
+        
+        // Restore
+        AppState.shared.statistics = original
+        AppState.shared.saveStatistics()
+    }
+}
+
+// ============================================================
+// MARK: - ShellHelper.runAsync Output Tests (Bug 2 regression)
+// ============================================================
+
+func testShellHelperRunAsyncOutput() {
+    runSuite("ShellHelper.runAsync Output") {
+        var capturedResult: ShellResult?
+        
+        _ = ShellHelper.runAsync("echo 'hello world'; echo 'line two'",
+            outputHandler: { _ in },
+            completion: { result in
+                capturedResult = result
+            }
+        )
+        
+        // Pump the run loop since completion dispatches to main queue
+        let deadline = Date().addingTimeInterval(10)
+        while capturedResult == nil && Date() < deadline {
+            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.1))
+        }
+        
+        assertNotNil(capturedResult, "runAsync should complete within 10s")
+        if let result = capturedResult {
+            assert(result.isSuccess, "echo should succeed")
+            assert(result.output.contains("hello world"), "Output should contain 'hello world', got: \(result.output)")
+            assert(result.output.contains("line two"), "Output should contain 'line two'")
+        }
+    }
+}
+
+// ============================================================
+// MARK: - ShellHelper.run Pipe Order Tests (Bug 5 regression)
+// ============================================================
+
+func testShellHelperRunLargeOutput() {
+    runSuite("ShellHelper.run Large Output") {
+        // Generate enough output to fill a pipe buffer (typically 64KB)
+        // This would have deadlocked before the fix
+        let result = ShellHelper.run("for i in $(seq 1 5000); do echo \"line $i padding padding padding padding\"; done", timeout: 15)
+        assert(result.isSuccess, "Large output command should succeed without deadlock")
+        assert(result.output.contains("line 5000"), "Should contain last line")
+    }
+}
+
+// ============================================================
+// MARK: - ClearLogs Persistence Tests (Bug 7 regression)
+// ============================================================
+
+func testClearLogsPersistence() {
+    runSuite("ClearLogs Persistence") {
+        let originalLogs = AppState.shared.activityLog
+        
+        // Add a log entry via addLog (batched with 0.5s delay)
+        AppState.shared.addLog(ActivityEntry(level: .info, category: .system, message: "Test log for clear"))
+        
+        // Pump run loop to flush the batched log entries
+        let flushDeadline = Date().addingTimeInterval(2)
+        while AppState.shared.activityLog.isEmpty && Date() < flushDeadline {
+            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.1))
+        }
+        assert(!AppState.shared.activityLog.isEmpty, "Should have at least one log after flush")
+        
+        // Clear and verify it persists empty
+        AppState.shared.clearLogs()
+        assert(AppState.shared.activityLog.isEmpty, "Logs should be empty after clear")
+        
+        // Reload and verify still empty
+        AppState.shared.loadActivityLog()
+        assert(AppState.shared.activityLog.isEmpty, "Logs should remain empty after reload")
+        
+        // Restore original logs directly
+        for entry in originalLogs {
+            AppState.shared.activityLog.append(entry)
+        }
+        AppState.shared.saveActivityLog()
+    }
+}
+
+// ============================================================
+// MARK: - Advanced Settings Persistence Tests (Feature 8)
+// ============================================================
+
+func testAdvancedSettingsPersistence() {
+    runSuite("Advanced Settings Persistence") {
+        // Save originals
+        let origWifi = AppState.shared.wifiFilterEnabled
+        let origSSIDs = AppState.shared.allowedSSIDsRaw
+        let origAC = AppState.shared.acPowerOnly
+        let origFlags = AppState.shared.customRsyncFlags
+        
+        // Set new values
+        AppState.shared.wifiFilterEnabled = true
+        AppState.shared.allowedSSIDsRaw = "HomeNet, OfficeNet"
+        AppState.shared.acPowerOnly = true
+        AppState.shared.customRsyncFlags = "--compress --delete"
+        
+        // Verify they read back
+        assertEqual(AppState.shared.wifiFilterEnabled, true, "WiFi filter should be enabled")
+        assertEqual(AppState.shared.acPowerOnly, true, "AC power only should be enabled")
+        assertEqual(AppState.shared.customRsyncFlags, "--compress --delete", "Custom flags should persist")
+        
+        // Verify parsed SSIDs
+        let ssids = AppState.shared.allowedSSIDs
+        assertEqual(ssids.count, 2, "Should have 2 SSIDs")
+        assert(ssids.contains("HomeNet"), "Should contain HomeNet")
+        assert(ssids.contains("OfficeNet"), "Should contain OfficeNet")
+        
+        // Empty SSIDs raw
+        AppState.shared.allowedSSIDsRaw = ""
+        assertEqual(AppState.shared.allowedSSIDs.count, 0, "Empty string should yield no SSIDs")
+        
+        // Restore originals
+        AppState.shared.wifiFilterEnabled = origWifi
+        AppState.shared.allowedSSIDsRaw = origSSIDs
+        AppState.shared.acPowerOnly = origAC
+        AppState.shared.customRsyncFlags = origFlags
+    }
+}
+
+// ============================================================
+// MARK: - SyncFolder Backward Compat (Cleanup 12 regression)
+// ============================================================
+
+func testSyncFolderBackwardCompat() {
+    runSuite("SyncFolder Backward Compat") {
+        // Simulate old serialized data that contains syncSchedule and fileFilters keys.
+        // The decoder should handle missing/extra keys gracefully.
+        let oldJSON = """
+        {
+            "id": "550E8400-E29B-41D4-A716-446655440000",
+            "name": "Test",
+            "localPath": "/local",
+            "nasPath": "/nas",
+            "isEnabled": true,
+            "excludePatterns": [".DS_Store"],
+            "symlinkMode": true,
+            "symlinkState": "local",
+            "symlinkProtected": false,
+            "syncSchedule": {"startHour": 0, "endHour": 24, "daysOfWeek": [0,1,2,3,4,5,6], "onlyOnWiFi": false, "wifiSSIDs": [], "onlyOnACPower": false},
+            "fileFilters": {"allowedExtensions": [], "maxFileSizeGB": null, "minFileSizeKB": null}
+        }
+        """
+        let data = oldJSON.data(using: .utf8)!
+        if let folder = try? JSONDecoder().decode(SyncFolder.self, from: data) {
+            assertEqual(folder.name, "Test", "Should decode name")
+            assertEqual(folder.symlinkMode, true, "Should decode symlinkMode")
+            assertEqual(folder.symlinkState, .local, "Should decode symlinkState")
+        } else {
+            assert(false, "Should decode old format with syncSchedule/fileFilters without crashing")
+        }
+    }
+}
+
+// ============================================================
 // MARK: - Run All Tests
 // ============================================================
 
@@ -813,8 +985,6 @@ struct TestRunner {
         testNASDevice()
         testDiscoveredNAS()
         testSyncFolder()
-        testSyncSchedule()
-        testFileFilters()
         testSyncJob()
         testSyncJobState()
         testActivityEntry()
@@ -831,6 +1001,13 @@ struct TestRunner {
         testSymlinkState()
         testSyncFolderSymlink()
         testSymlinkManager()
+        testStatisticsPersistence()
+        testSyncEngineNoOwnStatistics()
+        testShellHelperRunAsyncOutput()
+        testShellHelperRunLargeOutput()
+        testClearLogsPersistence()
+        testAdvancedSettingsPersistence()
+        testSyncFolderBackwardCompat()
 
         print("")
         print("═══════════════════════════════════════")

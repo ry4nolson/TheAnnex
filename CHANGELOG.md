@@ -6,6 +6,27 @@ All notable changes to The Annex will be documented in this file.
 
 
 ## [Unreleased]
+
+### Fixed
+- **Statistics reset on every restart** — `SyncEngine` had its own `Statistics()` initialized to zero, overwriting persisted stats on first sync. Now reads/writes directly from `AppState.shared.statistics`
+- **Rsync stats never parsed** — `ShellHelper.runAsync` returned empty output in completion, so rsync `--stats` summary was lost. Now accumulates and passes through all output
+- **@Published mutations off main thread** — `SyncEngine.syncQueue` and `activeSyncJobs` were mutated from background threads, risking SwiftUI crashes. Added internal backing stores with main-thread-only `@Published` updates
+- **Sync counter could go negative** — `cancelAll` zeroed `currentSyncs` but in-flight completions still decremented. Clamped to `max(0, n-1)`
+- **Shell command deadlock risk** — `ShellHelper.run` called `waitUntilExit()` before reading pipe data, risking deadlock on large output. Reversed order
+- **Menu bar rebuilt on every log line** — `SyncEngine.onLog` triggered `buildMenu()` per log entry during syncs. Removed; menu already rebuilds via `activeSyncJobs` observer
+- **Clear Logs didn't persist or update UI** — `clearLogs()` now calls `saveActivityLog()` and `objectWillChange.send()`
+
+### Added
+- **WiFi network restriction** — auto-sync skips when not connected to an allowed WiFi network (configurable in Advanced settings)
+- **AC power restriction** — auto-sync skips when running on battery (configurable in Advanced settings)
+- **Custom rsync flags** — user-defined rsync flags from Advanced settings are now passed through to rsync
+- **Launch at Login** — uses `SMAppService` (macOS 13+) for real login item registration
+
+### Changed
+- **Advanced settings fully persist** — WiFi filter, allowed SSIDs, AC power, and custom rsync flags now save to UserDefaults and reload on launch
+- **Removed dead code** — stripped unused `SyncSchedule` and `FileFilters` structs and properties from `SyncFolder`
+- **Test suite updated** — removed obsolete `SyncSchedule`/`FileFilters` tests, added 7 regression tests: statistics persistence, SyncEngine no-own-stats, runAsync output accumulation, large-output pipe safety, clearLogs persistence, advanced settings persistence, SyncFolder backward compatibility with old serialized data
+
 ## [1.6.1] - 2026-03-12
 
 ### Fixed

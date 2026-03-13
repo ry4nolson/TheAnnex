@@ -1,4 +1,5 @@
 import SwiftUI
+import ServiceManagement
 
 struct GeneralSettingsView: View {
     @ObservedObject private var appState = AppState.shared
@@ -184,12 +185,29 @@ struct GeneralSettingsView: View {
     
     private func loadSettings() {
         checkInterval = Int(appState.checkInterval)
-        launchAtLogin = appState.launchAtLogin
+        if #available(macOS 13.0, *) {
+            launchAtLogin = SMAppService.mainApp.status == .enabled
+        } else {
+            launchAtLogin = appState.launchAtLogin
+        }
     }
     
     private func saveSettings() {
         appState.updateCheckInterval(checkInterval)
         appState.launchAtLogin = launchAtLogin
+        
+        if #available(macOS 13.0, *) {
+            do {
+                if launchAtLogin {
+                    try SMAppService.mainApp.register()
+                } else {
+                    try SMAppService.mainApp.unregister()
+                }
+            } catch {
+                AppState.shared.addLog(ActivityEntry(level: .warning, category: .system, message: "Launch at Login failed: \(error.localizedDescription)"))
+            }
+        }
+        
         NASMonitor.shared.startMonitoring(interval: TimeInterval(checkInterval))
         if let appDelegate = NSApp.delegate as? AppDelegate {
             appDelegate.restartSyncTimer()
