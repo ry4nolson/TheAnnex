@@ -9,6 +9,7 @@ All notable changes to The Annex will be documented in this file.
 ## [Unreleased]
 
 ### Fixed
+- **Duplicate permission dialogs on launch** — syncs could pile up before macOS TCC permissions were granted, spawning multiple permission prompts. Now limits to 1 concurrent sync until first success, and guards the NAS-online reconnect path against queuing when syncs are already active
 - **CI test failure for runAsync output** — `ShellHelper.runAsync` had a race condition where pipe data wasn't fully drained before reading accumulated output. Now drains remaining pipe data after `waitUntilExit()` to ensure all output is captured in headless/CI environments
 
 ## [1.7.0] - 2026-03-12

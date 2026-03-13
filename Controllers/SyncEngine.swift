@@ -13,6 +13,7 @@ class SyncEngine: ObservableObject {
     private let syncQueue_lock = NSLock()
     private var _internalQueue: [UUID] = []
     private var _internalActiveIds: Set<UUID> = []
+    private var hasCompletedFirstSync = false
     
     var onLog: ((ActivityEntry) -> Void)?
     
@@ -116,7 +117,8 @@ class SyncEngine: ObservableObject {
         log(.info, category: .sync, message: "Processing queue: \(queueCount) queued, \(currentCount)/\(maxConcurrentSyncs) active")
         
         syncQueue_lock.lock()
-        while currentSyncs < maxConcurrentSyncs && !_internalQueue.isEmpty {
+        let effectiveMax = hasCompletedFirstSync ? maxConcurrentSyncs : 1
+        while currentSyncs < effectiveMax && !_internalQueue.isEmpty {
             let folderId = _internalQueue.removeFirst()
             syncQueue_lock.unlock()
             
@@ -241,6 +243,14 @@ class SyncEngine: ObservableObject {
                 }
                 
                 if result.success {
+                    // Unlock full concurrency now that permissions are confirmed
+                    if !self.hasCompletedFirstSync {
+                        self.syncQueue_lock.lock()
+                        self.hasCompletedFirstSync = true
+                        self.syncQueue_lock.unlock()
+                        self.log(.info, category: .sync, message: "First sync succeeded — enabling full concurrency")
+                    }
+                    
                     var message = "Completed sync for \(folder.name): \(result.filesTransferred) files, \(ByteCountFormatter.string(fromByteCount: result.bytesTransferred, countStyle: .file))"
                     if let quote = AnnexQuotes.shared.nextSyncCompleteQuote() {
                         message += " — \"\(quote)\""

@@ -37,6 +37,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.sendNotification(title: "The Annex", body: "Connected to NAS")
                 
                 // Symlink mode: sync any new local files, then re-symlink
+                // Skip if syncs are already running to avoid stacking permission dialogs
+                guard SyncEngine.shared.activeSyncJobs.isEmpty else {
+                    AppState.shared.addLog(ActivityEntry(level: .info, category: .sync, message: "NAS online — skipping auto-symlink sync, syncs already in progress"))
+                    return
+                }
                 DispatchQueue.global(qos: .userInitiated).async {
                     let folders = AppState.shared.syncFolders.filter { $0.symlinkMode && $0.symlinkState == .local && $0.isEnabled }
                     for folder in folders {
