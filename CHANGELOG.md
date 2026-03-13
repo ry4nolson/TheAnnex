@@ -8,6 +8,10 @@ All notable changes to The Annex will be documented in this file.
 
 
 ## [Unreleased]
+
+### Added
+- **DMG installer** — releases now include a styled `.dmg` with custom background, app icon, and Applications drop link alongside the `.zip`
+
 ## [1.7.1] - 2026-03-12
 
 ### Fixed

@@ -127,11 +127,16 @@ jobs:
 
           echo "✓ Build complete: $BUILD_DIR/$APP_NAME.zip"
 
-      - name: Upload artifact
+      - name: Create DMG installer
+        run: ./Scripts/create-dmg.sh .build/TheAnnex.app .build/TheAnnex.dmg
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: TheAnnex
-          path: .build/TheAnnex.zip
+          path: |
+            .build/TheAnnex.zip
+            .build/TheAnnex.dmg
 
       - name: Extract changelog for this version
         id: changelog
@@ -148,7 +153,9 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: .build/TheAnnex.zip
+          files: |
+            .build/TheAnnex.zip
+            .build/TheAnnex.dmg
           body_path: /tmp/release_notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
