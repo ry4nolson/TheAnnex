@@ -6,7 +6,9 @@ All notable changes to The Annex will be documented in this file.
 
 
 
+
 ## [Unreleased]
+## [1.7.1] - 2026-03-12
 
 ### Fixed
 - **Duplicate permission dialogs on launch** — syncs could pile up before macOS TCC permissions were granted, spawning multiple permission prompts. Now limits to 1 concurrent sync until first success, and guards the NAS-online reconnect path against queuing when syncs are already active
