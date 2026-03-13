@@ -77,7 +77,14 @@ class ShellHelper {
                 try task.run()
                 task.waitUntilExit()
                 
+                // Stop the readability handler, then drain any remaining data
                 pipe.fileHandleForReading.readabilityHandler = nil
+                let remainingData = pipe.fileHandleForReading.readDataToEndOfFile()
+                if !remainingData.isEmpty, let chunk = String(data: remainingData, encoding: .utf8) {
+                    outputLock.lock()
+                    accumulatedOutput += chunk
+                    outputLock.unlock()
+                }
                 
                 outputLock.lock()
                 let finalOutput = accumulatedOutput
