@@ -8,7 +8,9 @@ All notable changes to The Annex will be documented in this file.
 
 
 
+
 ## [Unreleased]
+## [1.9.0] - 2026-03-13
 
 ### Changed
 - **Sync History chart** — added time range picker (1h, 6h, 12h, 1d, 7d, 30d) and interval picker (1m, 5m, 15m, 30m, 60m, 1d) with proper time-bucketed aggregation and adaptive x-axis labels
