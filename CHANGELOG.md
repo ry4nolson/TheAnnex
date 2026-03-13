@@ -5,7 +5,9 @@ All notable changes to The Annex will be documented in this file.
 
 
 
+
 ## [Unreleased]
+## [1.7.0] - 2026-03-12
 
 ### Fixed
 - **Statistics reset on every restart** — `SyncEngine` had its own `Statistics()` initialized to zero, overwriting persisted stats on first sync. Now reads/writes directly from `AppState.shared.statistics`
