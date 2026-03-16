@@ -9,7 +9,9 @@ All notable changes to The Annex will be documented in this file.
 
 
 
+
 ## [Unreleased]
+## [1.10.0] - 2026-03-16
 
 ### Fixed
 - **Command injection via shell interpolation** — all shell commands now use `Process` with arguments array (`runDirect`/`runDirectAsync`) instead of string interpolation through `bash -c`, eliminating injection risk in hostnames, paths, share names, and custom rsync flags
