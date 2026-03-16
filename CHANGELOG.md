@@ -10,7 +10,9 @@ All notable changes to The Annex will be documented in this file.
 
 
 
+
 ## [Unreleased]
+## [1.11.0] - 2026-03-16
 ## [1.10.0] - 2026-03-16
 
 ### Fixed
