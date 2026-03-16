@@ -85,9 +85,9 @@ struct ActivityLogView: View {
         ) { result in
             switch result {
             case .success:
-                break
+                AppState.shared.addLog(ActivityEntry(level: .info, category: .system, message: "Activity log exported successfully"))
             case .failure(let error):
-                print("Export failed: \(error)")
+                AppState.shared.addLog(ActivityEntry(level: .error, category: .system, message: "Log export failed: \(error.localizedDescription)"))
             }
         }
     }
@@ -105,6 +105,7 @@ struct ActivityLogRow: View {
             Image(systemName: entry.level.iconName)
                 .foregroundColor(levelColor)
                 .frame(width: 20)
+                .accessibilityLabel(entry.level.displayName)
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack {

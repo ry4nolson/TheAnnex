@@ -2,3 +2,6 @@
 .DS_Store
 *.swp
 *~
+*.cer
+*.p12
+*.certSigningRequest

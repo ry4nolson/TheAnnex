@@ -14,8 +14,7 @@ class RsyncWrapper {
         completion: @escaping (RsyncResult) -> Void
     ) -> Process? {
         let destPath = destination.hasSuffix("/") ? String(destination.dropLast()) : destination
-        let mkdirCommand = "mkdir -p \"\(destPath)\""
-        let mkdirResult = ShellHelper.run(mkdirCommand)
+        let mkdirResult = ShellHelper.runDirect("/bin/mkdir", arguments: ["-p", destPath])
         
         if !mkdirResult.isSuccess {
             completion(RsyncResult(
@@ -48,18 +47,11 @@ class RsyncWrapper {
         
         args.append(contentsOf: [source.hasSuffix("/") ? source : source + "/", destination.hasSuffix("/") ? destination : destination + "/"])
         
-        let command = "rsync " + args.map { arg in
-            if arg.contains(" ") {
-                return "\"\(arg)\""
-            }
-            return arg
-        }.joined(separator: " ")
-        
         var currentProgress = RsyncProgress()
         var lastFileBytes: Int64 = 0
         let startTime = Date()
         
-        let process = ShellHelper.runAsync(command, outputHandler: { lines in
+        let process = ShellHelper.runDirectAsync("/usr/bin/rsync", arguments: args, outputHandler: { lines in
                 // Process all lines in the batch for accurate counting
                 for line in lines {
                     let trimmed = line.trimmingCharacters(in: .whitespaces)

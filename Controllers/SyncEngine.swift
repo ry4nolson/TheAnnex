@@ -112,23 +112,21 @@ class SyncEngine: ObservableObject {
         syncQueue_lock.lock()
         let queueCount = _internalQueue.count
         let currentCount = currentSyncs
+        let effectiveMax = hasCompletedFirstSync ? maxConcurrentSyncs : 1
+        
+        var foldersToStart: [UUID] = []
+        while currentSyncs + foldersToStart.count < effectiveMax && !_internalQueue.isEmpty {
+            foldersToStart.append(_internalQueue.removeFirst())
+        }
+        let snapshot = _internalQueue
         syncQueue_lock.unlock()
         
         log(.info, category: .sync, message: "Processing queue: \(queueCount) queued, \(currentCount)/\(maxConcurrentSyncs) active")
         
-        syncQueue_lock.lock()
-        let effectiveMax = hasCompletedFirstSync ? maxConcurrentSyncs : 1
-        while currentSyncs < effectiveMax && !_internalQueue.isEmpty {
-            let folderId = _internalQueue.removeFirst()
-            syncQueue_lock.unlock()
-            
+        for folderId in foldersToStart {
             log(.info, category: .sync, message: "Starting sync from queue")
             startSync(folderId: folderId)
-            
-            syncQueue_lock.lock()
         }
-        let snapshot = _internalQueue
-        syncQueue_lock.unlock()
         
         DispatchQueue.main.async { [weak self] in
             self?.syncQueue = snapshot
@@ -160,12 +158,12 @@ class SyncEngine: ObservableObject {
             
             // Count files in parallel — don't block rsync start
             DispatchQueue.global(qos: .utility).async {
-                let countCommand = "find \"\(folder.localPath)\" -type f | wc -l"
-                let countResult = ShellHelper.run(countCommand)
+                let countResult = ShellHelper.runDirect("/usr/bin/find", arguments: [folder.localPath, "-type", "f"])
                 
-                if countResult.isSuccess, let totalFiles = Int(countResult.output.trimmingCharacters(in: .whitespaces)) {
+                if countResult.isSuccess {
+                    let lineCount = countResult.output.components(separatedBy: "\n").filter { !$0.isEmpty }.count
                     DispatchQueue.main.async {
-                        job.totalFiles = totalFiles
+                        job.totalFiles = lineCount
                     }
                 }
             }
@@ -210,11 +208,13 @@ class SyncEngine: ObservableObject {
                 
                 self.log(.info, category: .sync, message: "Sync completion handler called for \(folder.name): success=\(result.success), files=\(result.filesTransferred), bytes=\(result.bytesTransferred)")
                 
-                job.state = result.success ? .completed : .failed
-                job.endDate = Date()
-                job.bytesTransferred = result.bytesTransferred
-                job.filesTransferred = result.filesTransferred
-                job.error = result.error
+                DispatchQueue.main.async {
+                    job.state = result.success ? .completed : .failed
+                    job.endDate = Date()
+                    job.bytesTransferred = result.bytesTransferred
+                    job.filesTransferred = result.filesTransferred
+                    job.error = result.error
+                }
                 
                 DispatchQueue.main.async {
                     if let index = self.activeSyncJobs.firstIndex(where: { $0.id == job.id }) {

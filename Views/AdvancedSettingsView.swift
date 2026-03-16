@@ -122,13 +122,26 @@ struct AdvancedSettingsView: View {
         customRsyncFlags = AppState.shared.customRsyncFlags
     }
     
+    private static let blockedRsyncFlags: Set<String> = [
+        "--rsync-path", "--rsh", "-e", "--daemon", "--config"
+    ]
+    
+    private func sanitizedRsyncFlags(_ raw: String) -> String {
+        raw.components(separatedBy: .whitespacesAndNewlines)
+            .filter { flag in
+                let lower = flag.lowercased()
+                return !flag.isEmpty && !Self.blockedRsyncFlags.contains(where: { lower.hasPrefix($0) })
+            }
+            .joined(separator: " ")
+    }
+    
     private func saveSettings() {
-        let limit = Int(bandwidthLimit) ?? 0
+        let limit = max(0, Int(bandwidthLimit) ?? 0)
         AppState.shared.updateBandwidthLimit(limit)
         AppState.shared.wifiFilterEnabled = enableWiFiFilter
         AppState.shared.allowedSSIDsRaw = allowedSSIDs
         AppState.shared.acPowerOnly = onlyOnACPower
-        AppState.shared.customRsyncFlags = customRsyncFlags
+        AppState.shared.customRsyncFlags = sanitizedRsyncFlags(customRsyncFlags)
         
         showingSaveAlert = true
     }

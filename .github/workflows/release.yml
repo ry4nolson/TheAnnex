@@ -27,6 +27,26 @@ jobs:
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION" Info.plist
           echo "Version set to $VERSION"
 
+      - name: Import signing certificate
+        if: env.CERTIFICATE_P12 != ''
+        env:
+          CERTIFICATE_P12: ${{ secrets.DEVELOPER_ID_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+          security create-keychain -p "" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "" "$KEYCHAIN_PATH"
+
+          echo "$CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security import "$RUNNER_TEMP/certificate.p12" -k "$KEYCHAIN_PATH" -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          rm "$RUNNER_TEMP/certificate.p12"
+
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
+
+          echo "CODESIGN_IDENTITY=Developer ID Application: Texas Beard Company LLC (M3C8F32WA5)" >> $GITHUB_ENV
+
       - name: Build app bundle
         run: |
           set -euo pipefail
@@ -119,7 +139,8 @@ jobs:
           fi
 
           echo "==> Code signing app bundle..."
-          codesign --force --deep --sign - "$APP_BUNDLE"
+          SIGN_IDENTITY="${CODESIGN_IDENTITY:--}"
+          codesign --force --deep --options runtime --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
 
           echo "==> Creating release zip..."
           cd "$BUILD_DIR"

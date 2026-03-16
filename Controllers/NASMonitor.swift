@@ -28,7 +28,9 @@ class NASMonitor: ObservableObject {
             self?.performHealthCheck()
         }
         
-        RunLoop.main.add(timer!, forMode: .common)
+        if let timer = timer {
+            RunLoop.main.add(timer, forMode: .common)
+        }
         
         performHealthCheck()
     }
@@ -65,7 +67,6 @@ class NASMonitor: ObservableObject {
                 let previousState = self.currentState
                 self.perDeviceOnline = onlineStatus
                 
-                _ = !self.hasCompletedInitialCheck
                 self.hasCompletedInitialCheck = true
                 
                 if anyOnline {
@@ -119,6 +120,8 @@ class NASMonitor: ObservableObject {
                     }
                     self.perDeviceQuality = [:]
                     self.perDeviceDiskSpace = [:]
+                    self.connectionQuality = nil
+                    self.nasDiskSpace = nil
                 }
             }
         }
@@ -129,38 +132,29 @@ class NASMonitor: ObservableObject {
         
         DispatchQueue.global(qos: .utility).async { [weak self] in
             for device in devices {
-                for share in device.shares {
-                    let mountPath = "/Volumes/\(share)"
-                    if !FileManager.default.fileExists(atPath: mountPath) {
-                        let url = device.shareURL(for: share)
-                        let script = "tell application \"Finder\" to mount volume \"\(url)\""
-                        let result = ShellHelper.run("osascript -e '\(script)'")
-                        
-                        if result.isSuccess {
-                            self?.log(.info, category: .mount, message: "Mounted \(device.name)/\(share)")
-                        } else {
-                            self?.log(.error, category: .mount, message: "Failed to mount \(device.name)/\(share)")
-                        }
-                    }
-                }
+                self?.mountSharesSync(for: device)
             }
         }
     }
     
     func mountShares(for device: NASDevice) {
         DispatchQueue.global(qos: .utility).async { [weak self] in
-            for share in device.shares {
-                let mountPath = "/Volumes/\(share)"
-                if !FileManager.default.fileExists(atPath: mountPath) {
-                    let url = device.shareURL(for: share)
-                    let script = "tell application \"Finder\" to mount volume \"\(url)\""
-                    let result = ShellHelper.run("osascript -e '\(script)'")
-                    
-                    if result.isSuccess {
-                        self?.log(.info, category: .mount, message: "Mounted \(device.name)/\(share)")
-                    } else {
-                        self?.log(.error, category: .mount, message: "Failed to mount \(device.name)/\(share)")
-                    }
+            self?.mountSharesSync(for: device)
+        }
+    }
+    
+    private func mountSharesSync(for device: NASDevice) {
+        for share in device.shares {
+            let mountPath = "/Volumes/\(share)"
+            if !FileManager.default.fileExists(atPath: mountPath) {
+                let url = device.authenticatedShareURL(for: share)
+                let script = "tell application \"Finder\" to mount volume \"\(url)\""
+                let result = ShellHelper.runDirect("/usr/bin/osascript", arguments: ["-e", script])
+                
+                if result.isSuccess {
+                    log(.info, category: .mount, message: "Mounted \(device.name)/\(share)")
+                } else {
+                    log(.error, category: .mount, message: "Failed to mount \(device.name)/\(share): \(result.error ?? result.output)")
                 }
             }
         }
@@ -170,7 +164,7 @@ class NASMonitor: ObservableObject {
         let mountPath = "/Volumes/\(share)"
         
         DispatchQueue.global(qos: .utility).async { [weak self] in
-            let result = ShellHelper.run("diskutil unmount \"\(mountPath)\"")
+            let result = ShellHelper.runDirect("/usr/sbin/diskutil", arguments: ["unmount", mountPath])
             
             if result.isSuccess {
                 self?.log(.info, category: .mount, message: "Unmounted share: \(share)")

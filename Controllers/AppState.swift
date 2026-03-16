@@ -96,17 +96,24 @@ class AppState: ObservableObject {
     }
     
     func loadNASDevices() {
-        if let data = defaults.data(forKey: Keys.nasDevices),
-           let devices = try? JSONDecoder().decode([NASDevice].self, from: data) {
-            nasDevices = devices
-        } else {
+        guard let data = defaults.data(forKey: Keys.nasDevices) else {
+            nasDevices = []
+            return
+        }
+        do {
+            nasDevices = try JSONDecoder().decode([NASDevice].self, from: data)
+        } catch {
+            NSLog("[AppState] Failed to decode NAS devices: %@", error.localizedDescription)
             nasDevices = []
         }
     }
     
     func saveNASDevices() {
-        if let data = try? JSONEncoder().encode(nasDevices) {
+        do {
+            let data = try JSONEncoder().encode(nasDevices)
             defaults.set(data, forKey: Keys.nasDevices)
+        } catch {
+            NSLog("[AppState] Failed to encode NAS devices: %@", error.localizedDescription)
         }
     }
     
@@ -146,17 +153,24 @@ class AppState: ObservableObject {
     }
     
     func loadSyncFolders() {
-        if let data = defaults.data(forKey: Keys.syncFolders),
-           let folders = try? JSONDecoder().decode([SyncFolder].self, from: data) {
-            syncFolders = folders
-        } else {
+        guard let data = defaults.data(forKey: Keys.syncFolders) else {
+            syncFolders = []
+            return
+        }
+        do {
+            syncFolders = try JSONDecoder().decode([SyncFolder].self, from: data)
+        } catch {
+            NSLog("[AppState] Failed to decode sync folders: %@", error.localizedDescription)
             syncFolders = []
         }
     }
     
     func saveSyncFolders() {
-        if let data = try? JSONEncoder().encode(syncFolders) {
+        do {
+            let data = try JSONEncoder().encode(syncFolders)
             defaults.set(data, forKey: Keys.syncFolders)
+        } catch {
+            NSLog("[AppState] Failed to encode sync folders: %@", error.localizedDescription)
         }
     }
     
@@ -211,15 +225,20 @@ class AppState: ObservableObject {
     }
     
     func loadActivityLog() {
-        if let data = defaults.data(forKey: Keys.activityLog),
-           let logs = try? JSONDecoder().decode([ActivityEntry].self, from: data) {
-            activityLog = logs
+        guard let data = defaults.data(forKey: Keys.activityLog) else { return }
+        do {
+            activityLog = try JSONDecoder().decode([ActivityEntry].self, from: data)
+        } catch {
+            NSLog("[AppState] Failed to decode activity log: %@", error.localizedDescription)
         }
     }
     
     func saveActivityLog() {
-        if let data = try? JSONEncoder().encode(activityLog) {
+        do {
+            let data = try JSONEncoder().encode(activityLog)
             defaults.set(data, forKey: Keys.activityLog)
+        } catch {
+            NSLog("[AppState] Failed to encode activity log: %@", error.localizedDescription)
         }
     }
     
@@ -247,15 +266,20 @@ class AppState: ObservableObject {
     }
     
     func loadStatistics() {
-        if let data = defaults.data(forKey: Keys.statistics),
-           let stats = try? JSONDecoder().decode(Statistics.self, from: data) {
-            statistics = stats
+        guard let data = defaults.data(forKey: Keys.statistics) else { return }
+        do {
+            statistics = try JSONDecoder().decode(Statistics.self, from: data)
+        } catch {
+            NSLog("[AppState] Failed to decode statistics: %@", error.localizedDescription)
         }
     }
     
     func saveStatistics() {
-        if let data = try? JSONEncoder().encode(statistics) {
+        do {
+            let data = try JSONEncoder().encode(statistics)
             defaults.set(data, forKey: Keys.statistics)
+        } catch {
+            NSLog("[AppState] Failed to encode statistics: %@", error.localizedDescription)
         }
     }
 }

@@ -1,0 +1,28 @@
+---
+description: Changelog versioning conventions for The Annex
+alwaysApply: true
+---
+
+# Changelog Convention
+
+This project uses a `CHANGELOG.md` file following Keep a Changelog format.
+
+## Workflow
+
+- All unreleased changes MUST be added under the `## [Unreleased]` section at the top of `CHANGELOG.md`.
+- Group entries under `### Added`, `### Fixed`, or `### Changed` subsections as appropriate.
+- When the release action runs, it promotes `[Unreleased]` entries into a new versioned section (e.g. `## [1.10.0] - 2026-03-16`).
+- Never create a new version heading manually; the release process handles that.
+
+## Entry Format
+
+- Each entry is a single bullet starting with a bold label, then an em dash and description:
+
+```markdown
+- **Feature name** — description of the change
+```
+
+## When to Update
+
+- Every user-facing change (feature, fix, behavior change) gets a changelog entry.
+- Internal refactors or test-only changes do not need entries unless they affect behavior.

@@ -30,6 +30,15 @@ struct NASDevice: Codable, Identifiable, Equatable, Hashable {
         "\(baseURL)/\(share)"
     }
     
+    func authenticatedShareURL(for share: String) -> String {
+        if let password = KeychainHelper.shared.get(for: "nas_\(id.uuidString)"),
+           !password.isEmpty {
+            let escapedPassword = password.addingPercentEncoding(withAllowedCharacters: .urlPasswordAllowed) ?? password
+            return "smb://\(username):\(escapedPassword)@\(hostname)/\(share)"
+        }
+        return shareURL(for: share)
+    }
+    
     func sharePath(for share: String) -> String {
         "/Volumes/\(share)"
     }
@@ -46,10 +55,10 @@ struct DiscoveredNAS: Identifiable, Hashable {
     }
     
     func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
+        hasher.combine(hostname)
     }
     
     static func == (lhs: DiscoveredNAS, rhs: DiscoveredNAS) -> Bool {
-        lhs.id == rhs.id
+        lhs.hostname == rhs.hostname
     }
 }

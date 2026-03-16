@@ -86,8 +86,7 @@ class SymlinkManager {
                 backupPath = backup
             } catch {
                 NSLog("[SYMLINK] FileManager.moveItem failed for %@: %@, trying shell mv", localPath, error.localizedDescription)
-                // Fallback: use shell mv for macOS-protected directories
-                let result = ShellHelper.run("mv \"\(localPath)\" \"\(backup)\"")
+                let result = ShellHelper.runDirect("/bin/mv", arguments: [localPath, backup])
                 if result.isSuccess {
                     backupPath = backup
                 } else {
@@ -102,14 +101,14 @@ class SymlinkManager {
             try fm.createSymbolicLink(atPath: localPath, withDestinationPath: nasPath)
         } catch {
             NSLog("[SYMLINK] FileManager.createSymbolicLink failed for %@: %@, trying shell ln", localPath, error.localizedDescription)
-            let lnResult = ShellHelper.run("ln -s \"\(nasPath)\" \"\(localPath)\"")
+            let lnResult = ShellHelper.runDirect("/bin/ln", arguments: ["-s", nasPath, localPath])
             if !lnResult.isSuccess {
                 NSLog("[SYMLINK] Shell ln also failed for %@: %@", localPath, lnResult.error ?? lnResult.output)
                 // Restore backup on failure
                 if let backup = backupPath {
                     try? fm.moveItem(atPath: backup, toPath: localPath)
                     if !fm.fileExists(atPath: localPath) {
-                        _ = ShellHelper.run("mv \"\(backup)\" \"\(localPath)\"")
+                        _ = ShellHelper.runDirect("/bin/mv", arguments: [backup, localPath])
                     }
                 }
                 return .failure(.symlinkCreationFailed("Failed to create symlink: \(error.localizedDescription)"))
@@ -137,7 +136,7 @@ class SymlinkManager {
             try fm.removeItem(atPath: localPath)
         } catch {
             NSLog("[SYMLINK] FileManager.removeItem failed for %@: %@, trying shell rm", localPath, error.localizedDescription)
-            let rmResult = ShellHelper.run("rm \"\(localPath)\"")
+            let rmResult = ShellHelper.runDirect("/bin/rm", arguments: [localPath])
             if !rmResult.isSuccess {
                 return .failure(.restoreFailed("Failed to remove symlink: \(error.localizedDescription)"))
             }
@@ -150,7 +149,7 @@ class SymlinkManager {
                 try fm.moveItem(atPath: backup, toPath: localPath)
             } catch {
                 NSLog("[SYMLINK] FileManager.moveItem restore failed for %@: %@, trying shell mv", localPath, error.localizedDescription)
-                let mvResult = ShellHelper.run("mv \"\(backup)\" \"\(localPath)\"")
+                let mvResult = ShellHelper.runDirect("/bin/mv", arguments: [backup, localPath])
                 if !mvResult.isSuccess {
                     // Both failed — create empty folder as fallback
                     try? fm.createDirectory(atPath: localPath, withIntermediateDirectories: true)

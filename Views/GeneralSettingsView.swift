@@ -69,13 +69,15 @@ struct GeneralSettingsView: View {
                 SettingsGroup(title: "Monitoring", icon: "timer") {
                     HStack {
                         Text("Check Interval:")
-                        Picker("", selection: $checkInterval) {
+                        Picker("Check Interval", selection: $checkInterval) {
                             ForEach(intervalOptions, id: \.value) { option in
                                 Text(option.label).tag(option.value)
                             }
                         }
                         .pickerStyle(.menu)
+                        .labelsHidden()
                         .frame(width: 150)
+                        .accessibilityLabel("Check interval")
                         Spacer()
                     }
                     .padding(12)
@@ -102,6 +104,7 @@ struct GeneralSettingsView: View {
                                         Image(systemName: nasMonitor.perDeviceOnline[device.id] == true ? "circle.fill" : "circle")
                                             .font(.caption2)
                                             .foregroundColor(nasMonitor.perDeviceOnline[device.id] == true ? .green : .red)
+                                            .accessibilityLabel(nasMonitor.perDeviceOnline[device.id] == true ? "Online" : "Offline")
                                         Text(device.name)
                                             .font(.subheadline)
                                             .fontWeight(.medium)
@@ -239,6 +242,8 @@ struct NASDeviceRow: View {
                     onSetDefault()
                 }
                 .help(device.isDefault ? "Default NAS" : "Set as default")
+                .accessibilityLabel(device.isDefault ? "Default NAS" : "Set as default NAS")
+                .accessibilityAddTraits(.isButton)
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(device.name)
@@ -442,7 +447,7 @@ struct AddNASSheet: View {
                     addNAS()
                 }
                 .keyboardShortcut(.defaultAction)
-                .disabled(name.isEmpty || hostname.isEmpty || username.isEmpty)
+                .disabled(name.isEmpty || hostname.isEmpty || username.isEmpty || !isValidHostname(hostname))
             }
         }
         .frame(width: 500)
@@ -509,6 +514,11 @@ struct AddNASSheet: View {
         }
     }
     
+    private func isValidHostname(_ host: String) -> Bool {
+        let forbidden = CharacterSet(charactersIn: ";|&$`\"'\\<>(){}!")
+        return host.rangeOfCharacter(from: forbidden) == nil && !host.isEmpty
+    }
+    
     private func addNAS() {
         let sharesList = shares
         let isFirstNAS = AppState.shared.nasDevices.isEmpty
@@ -522,7 +532,10 @@ struct AddNASSheet: View {
         AppState.shared.addNASDevice(device)
         
         if !password.isEmpty {
-            _ = KeychainHelper.shared.save(password: password, for: "nas_\(device.id.uuidString)")
+            let saved = KeychainHelper.shared.save(password: password, for: "nas_\(device.id.uuidString)")
+            if !saved {
+                AppState.shared.addLog(ActivityEntry(level: .error, category: .system, message: "Failed to save password to Keychain for \(name)"))
+            }
         }
         
         if isFirstNAS, let quote = AnnexQuotes.shared.quote(AnnexQuotes.firstNASAdded) {
@@ -658,7 +671,10 @@ struct EditNASSheet: View {
         AppState.shared.updateNASDevice(updated)
         
         if !password.isEmpty {
-            _ = KeychainHelper.shared.save(password: password, for: "nas_\(device.id.uuidString)")
+            let saved = KeychainHelper.shared.save(password: password, for: "nas_\(device.id.uuidString)")
+            if !saved {
+                AppState.shared.addLog(ActivityEntry(level: .error, category: .system, message: "Failed to save password to Keychain for \(name)"))
+            }
         }
         
         isPresented = false

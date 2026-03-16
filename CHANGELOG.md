@@ -10,6 +10,28 @@ All notable changes to The Annex will be documented in this file.
 
 
 ## [Unreleased]
+
+### Fixed
+- **Command injection via shell interpolation** — all shell commands now use `Process` with arguments array (`runDirect`/`runDirectAsync`) instead of string interpolation through `bash -c`, eliminating injection risk in hostnames, paths, share names, and custom rsync flags
+- **SyncJob mutations off main thread** — rsync completion handler now wraps all `@Published` property updates in `DispatchQueue.main.async` to prevent SwiftUI data races
+- **Thread-unsafe line buffer in ShellHelper** — `lineBuffer` in `readabilityHandler` is now protected by a dedicated `bufferLock`
+- **processQueue TOCTOU race** — `SyncEngine.processQueue()` now collects all folders to start under a single lock acquisition instead of unlocking/relocking between iterations
+- **SMB mounts not using stored credentials** — `NASMonitor` now retrieves passwords from Keychain via `authenticatedShareURL(for:)` and includes them in mount commands
+- **Force unwraps on timers and AppDelegate properties** — `timer!`, `syncTimer!`, `statusItem!`, and `menu!` replaced with safe optional unwrapping
+- **Silent data loss on decode failures** — all `AppState` load/save methods now log errors via `NSLog` instead of silently swallowing `try?` failures
+- **Dead code in NASMonitor** — removed no-op `_ = !self.hasCompletedInitialCheck` expression
+- **DiscoveredNAS deduplication broken** — `hash(into:)` and `==` now use `hostname` instead of per-instance UUID, so duplicate discoveries of the same host are correctly deduplicated
+- **Stale connection quality when NAS goes offline** — legacy `connectionQuality` and `nasDiskSpace` fields are now cleared alongside per-device dictionaries
+- **Process returned before started in ShellHelper.runAsync** — process is now started synchronously before returning, with `waitUntilExit` on a background queue
+- **IOKit nil safety** — `IOPSCopyPowerSourcesInfo()` and `IOPSCopyPowerSourcesList()` return values are now nil-checked before calling `takeRetainedValue()`
+- **Keychain save failures silently ignored** — failed saves now log an error to the activity log
+- **Log export failures invisible to user** — export success/failure now logged to activity log instead of only `print()`-ed
+
+### Added
+- **Shell escaping utility** — `ShellHelper.shellEscape()` for safe single-quote escaping, plus `runDirect()` and `runDirectAsync()` methods that bypass bash entirely
+- **Input validation** — hostname validation blocks shell-dangerous characters; bandwidth limit clamped to non-negative; dangerous rsync flags (`--rsync-path`, `--rsh`, `-e`, `--daemon`, `--config`) are stripped
+- **Accessibility labels** — status icons, check interval picker, NAS device star toggle, log level icons, and menu bar icon now have proper accessibility descriptions for VoiceOver
+
 ## [1.9.0] - 2026-03-13
 
 ### Changed

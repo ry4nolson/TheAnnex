@@ -4,8 +4,8 @@ import Combine
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     
-    var statusItem: NSStatusItem!
-    var menu: NSMenu!
+    var statusItem: NSStatusItem?
+    var menu: NSMenu?
     var mainWindowController = MainWindowController()
     
     private var cancellables = Set<AnyCancellable>()
@@ -156,7 +156,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         syncTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             self?.autoSync()
         }
-        RunLoop.main.add(syncTimer!, forMode: .common)
+        if let syncTimer = syncTimer {
+            RunLoop.main.add(syncTimer, forMode: .common)
+        }
     }
     
     func restartSyncTimer() {
@@ -236,57 +238,57 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         updateIcon()
         buildMenu()
-        statusItem.menu = menu
+        statusItem?.menu = menu
     }
     
     private func updateIcon() {
-        guard let button = statusItem.button else { return }
+        guard let button = statusItem?.button else { return }
         let state = NASMonitor.shared.currentState
         
-        if let image = NSImage(systemSymbolName: state.iconName, accessibilityDescription: nil) {
+        if let image = NSImage(systemSymbolName: state.iconName, accessibilityDescription: state.displayName) {
             image.isTemplate = true
             button.image = image
         }
     }
     
     private func buildMenu() {
-        menu = NSMenu()
+        let newMenu = NSMenu()
         
         let state = NASMonitor.shared.currentState
         let stateItem = NSMenuItem()
         stateItem.title = "Status: \(state.displayName)"
         stateItem.isEnabled = false
-        menu.addItem(stateItem)
+        newMenu.addItem(stateItem)
         
         if !AppState.shared.nasDevices.isEmpty {
             let nasCount = AppState.shared.nasDevices.count
             let nasItem = NSMenuItem()
             nasItem.title = "\(nasCount) NAS device\(nasCount == 1 ? "" : "s") configured"
             nasItem.isEnabled = false
-            menu.addItem(nasItem)
+            newMenu.addItem(nasItem)
         }
         
         if let quality = NASMonitor.shared.connectionQuality {
             let qualityItem = NSMenuItem()
             qualityItem.title = "Connection: \(quality.qualityLevel.rawValue)"
             qualityItem.isEnabled = false
-            menu.addItem(qualityItem)
+            newMenu.addItem(qualityItem)
         }
         
         if let diskSpace = NASMonitor.shared.nasDiskSpace {
             let diskItem = NSMenuItem()
             diskItem.title = "NAS: \(diskSpace.freeFormatted) free"
             diskItem.isEnabled = false
-            menu.addItem(diskItem)
+            newMenu.addItem(diskItem)
         }
         
-        menu.addItem(NSMenuItem.separator())
+        newMenu.addItem(NSMenuItem.separator())
         
         let openItem = NSMenuItem(title: "Open The Annex", action: #selector(openMainWindow), keyEquivalent: "")
         openItem.target = self
-        menu.addItem(openItem)
+        newMenu.addItem(openItem)
         
-        menu.addItem(NSMenuItem.separator())
+        newMenu.addItem(NSMenuItem.separator())
         
         if !AppState.shared.syncFolders.isEmpty {
             let syncFoldersMenu = NSMenu()
@@ -306,20 +308,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             
             let foldersMenuItem = NSMenuItem(title: "Sync Folder", action: nil, keyEquivalent: "")
             foldersMenuItem.submenu = syncFoldersMenu
-            menu.addItem(foldersMenuItem)
+            newMenu.addItem(foldersMenuItem)
             
             let syncAllItem = NSMenuItem(title: "Sync All Folders", action: #selector(syncAllFolders), keyEquivalent: "")
             syncAllItem.target = self
-            menu.addItem(syncAllItem)
+            newMenu.addItem(syncAllItem)
         }
         
         if !SyncEngine.shared.activeSyncJobs.isEmpty {
-            menu.addItem(NSMenuItem.separator())
+            newMenu.addItem(NSMenuItem.separator())
             
             let activeItem = NSMenuItem()
             activeItem.title = "Active Syncs (\(SyncEngine.shared.activeSyncJobs.count))"
             activeItem.isEnabled = false
-            menu.addItem(activeItem)
+            newMenu.addItem(activeItem)
             
             for job in SyncEngine.shared.activeSyncJobs.prefix(3) {
                 let jobItem = NSMenuItem()
@@ -330,15 +332,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 cancelJobItem.representedObject = job.id
                 jobSubMenu.addItem(cancelJobItem)
                 jobItem.submenu = jobSubMenu
-                menu.addItem(jobItem)
+                newMenu.addItem(jobItem)
             }
             
             let cancelItem = NSMenuItem(title: "Cancel All Syncs", action: #selector(cancelSyncs), keyEquivalent: "")
             cancelItem.target = self
-            menu.addItem(cancelItem)
+            newMenu.addItem(cancelItem)
         }
         
-        menu.addItem(NSMenuItem.separator())
+        newMenu.addItem(NSMenuItem.separator())
         
         if !AppState.shared.nasDevices.isEmpty {
             let sharesMenu = NSMenu()
@@ -357,10 +359,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
             let sharesMenuItem = NSMenuItem(title: "Open Share", action: nil, keyEquivalent: "")
             sharesMenuItem.submenu = sharesMenu
-            menu.addItem(sharesMenuItem)
+            newMenu.addItem(sharesMenuItem)
         }
         
-        menu.addItem(NSMenuItem.separator())
+        newMenu.addItem(NSMenuItem.separator())
         
         let recentItem = NSMenuItem(title: "Recent Activity", action: nil, keyEquivalent: "")
         let recentMenu = NSMenu()
@@ -382,18 +384,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         recentItem.submenu = recentMenu
-        menu.addItem(recentItem)
+        newMenu.addItem(recentItem)
         
-        menu.addItem(NSMenuItem.separator())
+        newMenu.addItem(NSMenuItem.separator())
         
         let quitItem = NSMenuItem(
             title: "Quit",
             action: #selector(NSApplication.terminate(_:)),
             keyEquivalent: "q"
         )
-        menu.addItem(quitItem)
+        newMenu.addItem(quitItem)
         
-        statusItem.menu = menu
+        menu = newMenu
+        statusItem?.menu = newMenu
     }
     
     @objc private func openMainWindow() {

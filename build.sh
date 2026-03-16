@@ -93,7 +93,8 @@ if [ -d "$SPONSOR_DIR" ]; then
 fi
 
 echo "==> Code signing app bundle..."
-codesign --force --deep --sign - "$APP_BUNDLE"
+SIGN_IDENTITY="${CODESIGN_IDENTITY:--}"
+codesign --force --deep --options runtime --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
 
 echo "==> Installing to ~/Applications/..."
 mkdir -p "$DEST_DIR"

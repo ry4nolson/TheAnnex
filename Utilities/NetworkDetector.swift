@@ -13,11 +13,14 @@ class NetworkDetector {
     }
     
     static func isOnACPower() -> Bool {
-        let snapshot = IOPSCopyPowerSourcesInfo().takeRetainedValue()
-        let sources = IOPSCopyPowerSourcesList(snapshot).takeRetainedValue() as Array
+        guard let snapshotRef = IOPSCopyPowerSourcesInfo() else { return true }
+        let snapshot = snapshotRef.takeRetainedValue()
+        guard let sourcesRef = IOPSCopyPowerSourcesList(snapshot) else { return true }
+        let sources = sourcesRef.takeRetainedValue() as Array
         
         for source in sources {
-            if let description = IOPSGetPowerSourceDescription(snapshot, source).takeUnretainedValue() as? [String: Any] {
+            guard let descRef = IOPSGetPowerSourceDescription(snapshot, source) else { continue }
+            if let description = descRef.takeUnretainedValue() as? [String: Any] {
                 if let powerSource = description[kIOPSPowerSourceStateKey] as? String {
                     return powerSource == kIOPSACPowerValue
                 }
@@ -28,11 +31,14 @@ class NetworkDetector {
     }
     
     static func getBatteryLevel() -> Int? {
-        let snapshot = IOPSCopyPowerSourcesInfo().takeRetainedValue()
-        let sources = IOPSCopyPowerSourcesList(snapshot).takeRetainedValue() as Array
+        guard let snapshotRef = IOPSCopyPowerSourcesInfo() else { return nil }
+        let snapshot = snapshotRef.takeRetainedValue()
+        guard let sourcesRef = IOPSCopyPowerSourcesList(snapshot) else { return nil }
+        let sources = sourcesRef.takeRetainedValue() as Array
         
         for source in sources {
-            if let description = IOPSGetPowerSourceDescription(snapshot, source).takeUnretainedValue() as? [String: Any] {
+            guard let descRef = IOPSGetPowerSourceDescription(snapshot, source) else { continue }
+            if let description = descRef.takeUnretainedValue() as? [String: Any] {
                 if let currentCapacity = description[kIOPSCurrentCapacityKey] as? Int {
                     return currentCapacity
                 }
@@ -55,12 +61,12 @@ class NetworkDetector {
     }
     
     static func pingHost(_ hostname: String, timeout: Int = 2) -> Bool {
-        let result = ShellHelper.run("ping -c 1 -t \(timeout) \(hostname)", timeout: TimeInterval(timeout + 1))
+        let result = ShellHelper.runDirect("/sbin/ping", arguments: ["-c", "1", "-t", "\(timeout)", hostname], timeout: TimeInterval(timeout + 1))
         return result.isSuccess
     }
     
     static func getConnectionQuality(to hostname: String) -> ConnectionQuality {
-        let result = ShellHelper.run("ping -c 10 \(hostname)")
+        let result = ShellHelper.runDirect("/sbin/ping", arguments: ["-c", "10", hostname])
         
         guard result.isSuccess else {
             return ConnectionQuality(latency: nil, packetLoss: 100.0)
