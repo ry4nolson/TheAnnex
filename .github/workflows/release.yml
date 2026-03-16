@@ -28,11 +28,14 @@ jobs:
           echo "Version set to $VERSION"
 
       - name: Import signing certificate
-        if: ${{ secrets.DEVELOPER_ID_P12 != '' }}
         env:
           CERTIFICATE_P12: ${{ secrets.DEVELOPER_ID_P12 }}
           CERTIFICATE_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
         run: |
+          if [ -z "$CERTIFICATE_P12" ]; then
+            echo "No signing certificate configured, skipping"
+            exit 0
+          fi
           KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
           security create-keychain -p "" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
