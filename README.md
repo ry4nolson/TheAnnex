@@ -14,6 +14,38 @@
 
 A macOS menu bar app that syncs your Mac's folders to your NAS — and optionally symlinks them so your files live on the NAS while still feeling local.
 
+## What Does The Annex Do?
+
+Most NAS sync tools are clunky, require vendor lock-in, or don't integrate well with macOS. The Annex sits quietly in your menu bar and handles the boring parts — keeping your local folders backed up to your NAS and, if you want, making them *live* on the NAS transparently.
+
+### Example: Offloading a project folder
+
+You have `~/Projects` with 80 GB of repos and assets. Your MacBook is running low on space, but your Synology has terabytes free.
+
+1. Add your NAS in The Annex (or let it auto-discover via Bonjour)
+2. Add `~/Projects` as a sync folder pointed at `/volume1/Projects` on the NAS
+3. Hit **Sync** — rsync pushes everything to the NAS with progress tracking
+4. Enable **Symlink Mode** — The Annex replaces `~/Projects` with a symlink to the mounted NAS share
+
+Now `~/Projects` reads and writes directly to the NAS. Your apps don't know the difference. If you take your laptop to a coffee shop and the NAS goes offline, The Annex automatically restores a local copy. When you get home, it syncs changes back and re-creates the symlink.
+
+### Example: Backing up multiple Macs
+
+You have a Mac Studio at your desk and a MacBook on the go. Both run The Annex pointed at the same NAS.
+
+- The Studio syncs `~/Documents`, `~/Music`, and `~/Pictures` on a 5-minute interval
+- The MacBook syncs `~/Documents` and `~/Desktop` whenever it's on the home WiFi (WiFi filtering keeps it from trying over a hotspot)
+
+Each Mac gets its own NAS destination folder. The Activity Log and Statistics tabs show you exactly what synced, when, and how much data moved.
+
+### Example: Managing multiple NAS devices
+
+You have a primary Synology for everyday storage and a secondary QNAP for cold backups.
+
+- Set the Synology as your default NAS for most sync folders
+- Assign specific folders (like `~/Archives`) to the QNAP instead
+- The Annex monitors both independently — online status, disk space, connection quality — all visible at a glance in the General tab
+
 ## Installation
 
 ### Download
@@ -88,7 +120,7 @@ The app will be installed to `~/Applications/TheAnnex.app` and launched automati
 
 ### Security
 - Keychain integration for NAS passwords (per-device)
-- Ad-hoc code signing for macOS permission persistence
+- Developer ID code signing with Apple notarization
 
 ### Personality
 - Optional "Annex personality" mode with fun quotes in notifications, logs, and empty states
