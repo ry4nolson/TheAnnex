@@ -6,7 +6,7 @@ export const meta: MetaFunction = () => [
   { title: "Thank You — The Annex" },
   {
     name: "description",
-    content: "Thanks for purchasing The Annex! Download the latest release.",
+    content: "Thanks for supporting The Annex! Download the latest release.",
   },
 ];
 
@@ -25,8 +25,8 @@ export default function Success() {
           Thank you!
         </h1>
         <p className="mt-4 text-lg text-brand-300">
-          Your purchase supports continued development of The Annex. Download
-          the latest release below.
+          Thanks for supporting continued development of The Annex. Download the
+          latest release below.
         </p>
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">

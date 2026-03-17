@@ -24,6 +24,7 @@ export const meta: MetaFunction = () => [
 ];
 
 const GITHUB_URL = "https://github.com/ry4nolson/TheAnnex";
+const RELEASES_URL = "https://github.com/ry4nolson/TheAnnex/releases/latest";
 
 const FEATURES = [
   {
@@ -72,7 +73,7 @@ const FEATURES = [
     icon: Terminal,
     title: "Open Source",
     description:
-      "GPL-3.0 licensed. Build from source for free, or buy the built and signed app to support development.",
+      "GPL-3.0 licensed. Download free releases, build from source, or chip in to support development.",
   },
 ];
 
@@ -144,22 +145,25 @@ export default function Home() {
                 disabled={buying}
                 className="btn-primary px-8 py-3.5 text-base disabled:opacity-60"
               >
-                {buying ? "Redirecting..." : "Buy for $5"}
+                {buying ? "Redirecting..." : "Support for $5"}
                 {!buying && <ArrowRight size={18} />}
               </button>
               <a
-                href={GITHUB_URL}
+                href={RELEASES_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-secondary px-8 py-3.5 text-base"
               >
                 <Github size={18} />
-                View on GitHub
+                Free download
               </a>
             </div>
             <p className="mt-4 text-sm text-brand-500">
               macOS 12+ &middot; Apple Silicon & Intel &middot; Open source
               (GPL-3.0)
+            </p>
+            <p className="mt-3 text-sm text-brand-400">
+              Want to support the project? The $5 checkout is optional.
             </p>
           </div>
         </div>
@@ -289,11 +293,11 @@ export default function Home() {
             className="mx-auto mb-8 h-20 w-20 rounded-2xl shadow-2xl shadow-brand-accent/20"
           />
           <h2 className="section-heading text-white">
-            Get The Annex for $5
+            Support The Annex
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-brand-400">
-            Signed, notarized, and ready to run. One-time purchase — no
-            subscriptions. Or build from source for free.
+            The Annex is open source. Download it for free, build it yourself,
+            or chip in $5 to support development.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <button
@@ -301,17 +305,17 @@ export default function Home() {
               disabled={buying}
               className="btn-primary px-10 py-4 text-base disabled:opacity-60"
             >
-              {buying ? "Redirecting..." : "Buy for $5"}
+              {buying ? "Redirecting..." : "Support for $5"}
               {!buying && <ArrowRight size={18} />}
             </button>
             <a
-              href={GITHUB_URL}
+              href={RELEASES_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="btn-secondary px-10 py-4 text-base"
             >
               <Github size={18} />
-              Build from Source
+              Free download
             </a>
           </div>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-brand-500">
@@ -323,6 +327,9 @@ export default function Home() {
             <span>&middot;</span>
             <span>Apple Notarized</span>
           </div>
+          <p className="mt-4 text-xs text-brand-500">
+            The checkout is optional support. The app and source remain public.
+          </p>
         </div>
       </section>
 

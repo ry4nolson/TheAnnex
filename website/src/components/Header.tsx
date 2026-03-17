@@ -74,13 +74,13 @@ export default function Header() {
               <Github size={20} />
             </a>
             <a href="/#buy" className="btn-primary ml-3 py-2 text-sm">
-              Buy for $5
+              Support $5
             </a>
           </div>
 
           <div className="flex items-center gap-2 md:hidden">
             <a href="/#buy" className="btn-primary py-1.5 px-4 text-xs">
-              Buy $5
+              Support $5
             </a>
             <button
               className="rounded-lg p-2 text-brand-300 hover:bg-white/5"
