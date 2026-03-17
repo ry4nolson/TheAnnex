@@ -1,0 +1,38 @@
+{
+  "name": "theannex-website",
+  "version": "1.0.0",
+  "description": "Marketing website for The Annex — macOS NAS sync app",
+  "type": "module",
+  "scripts": {
+    "dev": "react-router dev",
+    "build": "react-router build",
+    "preview": "react-router-serve ./build/server/index.js",
+    "netlify:dev": "node scripts/netlify-dev.js",
+    "typecheck": "react-router typegen && tsc"
+  },
+  "dependencies": {
+    "@netlify/functions": "^2.4.1",
+    "@react-router/dev": "^7.12.0",
+    "@react-router/node": "^7.12.0",
+    "@tailwindcss/typography": "^0.5.19",
+    "isbot": "^5.1.0",
+    "lucide-react": "^0.460.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router": "^7.12.0",
+    "stripe": "^17.0.0"
+  },
+  "devDependencies": {
+    "@netlify/vite-plugin-react-router": "^2.1.2",
+    "@types/node": "^20.11.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.16",
+    "netlify-cli": "^17.10.1",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.3.6",
+    "typescript": "^5.4.5",
+    "vite": "^5.0.8"
+  }
+}
