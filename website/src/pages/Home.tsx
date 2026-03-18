@@ -7,11 +7,12 @@ import {
   HardDrive,
   Shield,
   Wifi,
-  BatteryCharging,
   Terminal,
   Github,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { MetaFunction } from "react-router";
 
 export const meta: MetaFunction = () => [
@@ -25,6 +26,16 @@ export const meta: MetaFunction = () => [
 
 const GITHUB_URL = "https://github.com/ry4nolson/TheAnnex";
 const RELEASES_URL = "https://github.com/ry4nolson/TheAnnex/releases/latest";
+
+const SCREENSHOTS: { src: string; alt: string }[] = [
+  { src: "/screenshots/GeneralTab.png", alt: "General tab — devices and status" },
+  { src: "/screenshots/SyncFoldersTab.png", alt: "Sync Folders tab — sync pairs and controls" },
+  { src: "/screenshots/ActivityLogTab.png", alt: "Activity Log tab — searchable sync log" },
+  { src: "/screenshots/StatisticsTab.png", alt: "Statistics tab — charts and transfer metrics" },
+  { src: "/screenshots/AdvancedTab.png", alt: "Advanced tab — scheduling and rsync options" },
+  { src: "/screenshots/WhatsNewTab.png", alt: "What's New tab — changelog inside the app" },
+  { src: "/screenshots/AboutTab.png", alt: "About tab — version and update controls" },
+];
 
 const FEATURES = [
   {
@@ -97,6 +108,42 @@ const USE_CASES = [
 
 export default function Home() {
   const [buying, setBuying] = useState(false);
+  const [shotIndex, setShotIndex] = useState(0);
+  const [isHoveringShots, setIsHoveringShots] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+
+  const prefersReducedMotion = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
+  }, []);
+
+  useEffect(() => {
+    if (prefersReducedMotion) return;
+    if (isHoveringShots) return;
+    if (lightboxOpen) return;
+    if (SCREENSHOTS.length <= 1) return;
+
+    const id = window.setInterval(() => {
+      setShotIndex((i) => (i + 1) % SCREENSHOTS.length);
+    }, 6500);
+
+    return () => window.clearInterval(id);
+  }, [isHoveringShots, lightboxOpen, prefersReducedMotion]);
+
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setLightboxOpen(false);
+      if (e.key === "ArrowLeft") {
+        setShotIndex((i) => (i - 1 + SCREENSHOTS.length) % SCREENSHOTS.length);
+      }
+      if (e.key === "ArrowRight") {
+        setShotIndex((i) => (i + 1) % SCREENSHOTS.length);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [lightboxOpen]);
 
   async function handleBuy() {
     setBuying(true);
@@ -168,6 +215,183 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Screenshots */}
+      <section className="border-t border-white/5 py-20">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="text-center">
+            <span className="section-badge">Screenshots</span>
+            <h2 className="section-heading mt-4 text-white">
+              A quick look inside
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-brand-400">
+              The Annex lives in your menu bar, but the full app gives you
+              devices, sync folders, logs, stats, and advanced controls.
+            </p>
+          </div>
+
+          <div
+            className="mt-12"
+            onMouseEnter={() => setIsHoveringShots(true)}
+            onMouseLeave={() => setIsHoveringShots(false)}
+          >
+            <div className="mx-auto w-full max-w-3xl lg:max-w-[50%]">
+              <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-white/[0.02]">
+              <div className="relative aspect-[16/12] w-full bg-brand-900">
+                {SCREENSHOTS.map((shot, i) => (
+                  <button
+                    key={shot.src}
+                    type="button"
+                    onClick={() => {
+                      setShotIndex(i);
+                      setLightboxOpen(true);
+                    }}
+                    className="absolute inset-0"
+                    aria-hidden={i !== shotIndex}
+                    tabIndex={i === shotIndex ? 0 : -1}
+                  >
+                    <img
+                      src={shot.src}
+                      alt={i === shotIndex ? shot.alt : ""}
+                      loading={i === shotIndex ? "eager" : "lazy"}
+                      className={[
+                        "h-full w-full object-cover object-center",
+                        prefersReducedMotion
+                          ? ""
+                          : "transition-opacity duration-700 ease-out",
+                        i === shotIndex ? "opacity-100" : "opacity-0",
+                      ].join(" ")}
+                    />
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShotIndex(
+                      (shotIndex - 1 + SCREENSHOTS.length) % SCREENSHOTS.length
+                    )
+                  }
+                  className="absolute left-3 top-1/2 -translate-y-1/2 rounded-xl border border-white/10 bg-brand-950/60 p-2.5 text-white backdrop-blur transition hover:bg-brand-950/80 focus:outline-none focus:ring-2 focus:ring-brand-accent/60"
+                  aria-label="Previous screenshot"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShotIndex((shotIndex + 1) % SCREENSHOTS.length)
+                  }
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl border border-white/10 bg-brand-950/60 p-2.5 text-white backdrop-blur transition hover:bg-brand-950/80 focus:outline-none focus:ring-2 focus:ring-brand-accent/60"
+                  aria-label="Next screenshot"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-3 border-t border-white/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-brand-300">
+                  {SCREENSHOTS[shotIndex]?.alt}
+                </p>
+                <div className="flex items-center justify-between gap-3 sm:justify-end">
+                  <div
+                    className="flex items-center gap-2"
+                    role="tablist"
+                    aria-label="Screenshot selector"
+                  >
+                    {SCREENSHOTS.map((_, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setShotIndex(i)}
+                        className={[
+                          "h-2.5 w-2.5 rounded-full transition",
+                          i === shotIndex
+                            ? "bg-brand-accent"
+                            : "bg-white/15 hover:bg-white/25",
+                        ].join(" ")}
+                        aria-label={`Show screenshot ${i + 1}`}
+                        aria-current={i === shotIndex ? "true" : undefined}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLightboxOpen(true)}
+                    className="text-xs font-semibold text-brand-accent-light underline decoration-brand-600 transition-colors hover:text-white hover:no-underline"
+                  >
+                    View full size →
+                  </button>
+                </div>
+              </div>
+              </div>
+            </div>
+
+            <p className="mt-3 text-center text-xs text-brand-500">
+              Auto-advances every few seconds. Hover to pause.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {lightboxOpen && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Screenshot viewer"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setLightboxOpen(false);
+          }}
+        >
+          <div className="relative w-full max-w-6xl overflow-hidden rounded-2xl border border-white/10 bg-brand-950 shadow-2xl">
+            <div className="relative aspect-[16/10] w-full bg-black">
+              <img
+                src={SCREENSHOTS[shotIndex]?.src}
+                alt={SCREENSHOTS[shotIndex]?.alt ?? "Screenshot"}
+                className="h-full w-full object-contain"
+              />
+
+              <button
+                type="button"
+                onClick={() => setLightboxOpen(false)}
+                className="absolute right-3 top-3 rounded-xl border border-white/10 bg-brand-950/60 px-3 py-2 text-sm font-semibold text-white backdrop-blur transition hover:bg-brand-950/80 focus:outline-none focus:ring-2 focus:ring-brand-accent/60"
+                aria-label="Close"
+              >
+                Close
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setShotIndex(
+                    (shotIndex - 1 + SCREENSHOTS.length) % SCREENSHOTS.length
+                  )
+                }
+                className="absolute left-3 top-1/2 -translate-y-1/2 rounded-xl border border-white/10 bg-brand-950/60 p-2.5 text-white backdrop-blur transition hover:bg-brand-950/80 focus:outline-none focus:ring-2 focus:ring-brand-accent/60"
+                aria-label="Previous screenshot"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setShotIndex((shotIndex + 1) % SCREENSHOTS.length)
+                }
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl border border-white/10 bg-brand-950/60 p-2.5 text-white backdrop-blur transition hover:bg-brand-950/80 focus:outline-none focus:ring-2 focus:ring-brand-accent/60"
+                aria-label="Next screenshot"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-2 border-t border-white/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-brand-300">{SCREENSHOTS[shotIndex]?.alt}</p>
+              <p className="text-xs text-brand-500">ESC to close · ←/→ to navigate</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Features */}
       <section className="border-t border-white/5 py-24">
