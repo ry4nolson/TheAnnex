@@ -11,6 +11,7 @@
     "typecheck": "react-router typegen && tsc"
   },
   "dependencies": {
+    "@netlify/blobs": "^10.7.4",
     "@netlify/functions": "^2.4.1",
     "@react-router/dev": "^7.12.0",
     "@react-router/node": "^7.12.0",

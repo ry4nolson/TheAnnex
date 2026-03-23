@@ -5,6 +5,7 @@ export default [
     index("pages/Home.tsx"),
     route("changelog", "pages/Changelog.tsx"),
     route("docs", "pages/Docs.tsx"),
+    route("feature-requests", "pages/FeatureRequests.tsx"),
     route("success", "pages/Success.tsx"),
   ]),
 ] satisfies RouteConfig;

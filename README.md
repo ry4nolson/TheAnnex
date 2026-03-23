@@ -234,6 +234,37 @@ TheAnnex/
 2. Check that both devices are on the same network/subnet
 3. Try entering the hostname manually
 
+## Website
+
+The marketing site lives in `website/` and deploys to [theannex.app](https://theannex.app) via Netlify.
+
+### Required Environment Variables (Netlify)
+
+| Variable | Purpose |
+|---|---|
+| `STRIPE_SECRET_KEY` | Stripe secret key for checkout |
+| `STRIPE_PRICE_ID` | Stripe Price ID for the support payment |
+| `GITHUB_TOKEN` | Fine-grained PAT with Issues read/write on `ry4nolson/TheAnnex` |
+| `GITHUB_OWNER` | GitHub org/user (default: `ry4nolson`) |
+| `GITHUB_REPO` | GitHub repo name (default: `TheAnnex`) |
+| `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile secret key (server-side) |
+| `VITE_TURNSTILE_SITE_KEY` | Cloudflare Turnstile site key (client-side, prefixed with `VITE_` so Vite exposes it) |
+
+Optional:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `FEATURE_REQUESTS_LIST_LIMIT` | `30` | Max feature requests returned per page |
+| `FEATURE_REQUESTS_RATE_DAYS` | `1` | Submissions allowed per IP per N days |
+
+### Feature Requests
+
+The `/feature-requests` page lets visitors submit ideas that become GitHub Issues with the `feature-request` label. Submissions are protected by Cloudflare Turnstile (CAPTCHA) and a one-request-per-day-per-IP throttle backed by Netlify Blobs.
+
+To set up Turnstile, create a site at [dash.cloudflare.com/turnstile](https://dash.cloudflare.com/turnstile) and add the keys above.
+
+The `GITHUB_TOKEN` needs a fine-grained personal access token with **Issues: Read and Write** permission scoped to the `ry4nolson/TheAnnex` repository.
+
 ## Sponsor
 
 <a href="https://www.texasbeardcompany.com">

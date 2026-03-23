@@ -6,6 +6,7 @@ const NAV_LINKS = [
   { path: "/", label: "Home" },
   { path: "/docs", label: "Docs" },
   { path: "/changelog", label: "Changelog" },
+  { path: "/feature-requests", label: "Requests" },
 ];
 
 const GITHUB_URL = "https://github.com/ry4nolson/TheAnnex";
