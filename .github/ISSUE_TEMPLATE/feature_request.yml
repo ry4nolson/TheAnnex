@@ -1,0 +1,34 @@
+name: Feature Request
+description: Suggest an idea or improvement for The Annex
+labels: ["feature-request"]
+body:
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - UI / UX
+        - Sync Engine
+        - Monitoring
+        - Integrations
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the feature, the problem it solves, and any context that would help.
+      placeholder: "I'd like The Annex to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any workarounds or alternative approaches you've thought of.
+      placeholder: "I currently work around this by..."
+    validations:
+      required: false
