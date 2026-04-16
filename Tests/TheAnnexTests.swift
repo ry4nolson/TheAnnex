@@ -721,12 +721,12 @@ func testSymlinkManager() {
             assert(false, "createSymlink should succeed")
         }
 
-        // createSymlink: already symlinked
+        // createSymlink: already symlinked to same NAS path — idempotent success
         let dupResult = mgr.createSymlink(localPath: localDir, nasPath: nasDir)
-        if case .failure(let err) = dupResult {
-            assert(err.description.contains("Already"), "Should report already symlinked")
+        if case .success = dupResult {
+            assert(mgr.isSymlink(at: localDir), "Should remain symlinked")
         } else {
-            assert(false, "Should fail for already symlinked")
+            assert(false, "Should succeed idempotently when already linked to same path")
         }
 
         // removeSymlink: success
@@ -751,6 +751,69 @@ func testSymlinkManager() {
         assert(!mgr.hasBackup(for: localDir), "Backup should be cleaned up")
 
         // Cleanup
+        try? fm.removeItem(atPath: testDir)
+    }
+}
+
+func testSymlinkOfflineAndPartialRepair() {
+    runSuite("Symlink offline / partial repair") {
+        let mgr = SymlinkManager.shared
+        let fm = FileManager.default
+        let testDir = NSTemporaryDirectory() + "theannex-test-\(UUID().uuidString)"
+        let localDir = testDir + "/local"
+        let nasDir = testDir + "/nas"
+
+        try? fm.createDirectory(atPath: localDir, withIntermediateDirectories: true)
+        try? fm.createDirectory(atPath: nasDir, withIntermediateDirectories: true)
+        try? "x".write(toFile: localDir + "/f.txt", atomically: true, encoding: .utf8)
+
+        let result = mgr.createSymlink(localPath: localDir, nasPath: nasDir)
+        guard case .success = result else {
+            assert(false, "createSymlink should succeed")
+            return
+        }
+
+        let folderId = UUID()
+        let folderLinked = SyncFolder(
+            id: folderId,
+            name: "Test",
+            localPath: localDir,
+            nasPath: nasDir,
+            isEnabled: true,
+            symlinkMode: true,
+            symlinkState: .symlinked
+        )
+
+        assert(mgr.localSymlinkMatchesConfiguredNASPath(folderLinked), "Symlink should match configured NAS path")
+
+        // State desync: app thinks local but disk is still symlinked — offline handler should still restore
+        var folderDesync = folderLinked
+        folderDesync.symlinkState = .local
+        let offlineResults = mgr.handleNASOffline(folders: [folderDesync])
+        assertEqual(offlineResults.count, 1, "handleNASOffline should process desynced folder")
+        if case .success = offlineResults[0].1 {} else { assert(false, "Expected success") }
+        assert(!mgr.isSymlink(at: localDir), "Should remove symlink on offline")
+
+        // Partial outage: recreate symlink, delete NAS dir, repair while "ping still OK"
+        try? "y".write(toFile: localDir + "/g.txt", atomically: true, encoding: .utf8)
+        try? fm.removeItem(atPath: localDir)
+        try? fm.createDirectory(atPath: localDir, withIntermediateDirectories: true)
+        try? "z".write(toFile: localDir + "/h.txt", atomically: true, encoding: .utf8)
+        try? fm.createDirectory(atPath: nasDir, withIntermediateDirectories: true)
+        let linkAgain = mgr.createSymlink(localPath: localDir, nasPath: nasDir)
+        guard case .success = linkAgain else {
+            assert(false, "second createSymlink should succeed")
+            return
+        }
+        try? fm.removeItem(atPath: nasDir)
+
+        let repair = mgr.repairSymlinksWhenNASMayBePartiallyReachable(
+            folders: [folderLinked],
+            perDeviceOnline: [:]
+        )
+        assertEqual(repair.count, 1, "Repair should run when nasPath is missing")
+        assert(!mgr.isSymlink(at: localDir), "Repair should remove broken symlink")
+
         try? fm.removeItem(atPath: testDir)
     }
 }
@@ -1001,6 +1064,7 @@ struct TestRunner {
         testSymlinkState()
         testSyncFolderSymlink()
         testSymlinkManager()
+        testSymlinkOfflineAndPartialRepair()
         testStatisticsPersistence()
         testSyncEngineNoOwnStatistics()
         testShellHelperRunAsyncOutput()

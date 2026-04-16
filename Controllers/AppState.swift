@@ -186,6 +186,25 @@ class AppState: ObservableObject {
         }
     }
     
+    /// Applies symlink removal results on the main thread (for @Published consistency).
+    func applySymlinkUnlinkResults(_ results: [(SyncFolder, Result<Void, SymlinkManager.SymlinkError>)]) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            for (folder, result) in results {
+                switch result {
+                case .success:
+                    self.addLog(ActivityEntry(level: .info, category: .sync, message: "Restored \(folder.name) locally — files will save on this Mac"))
+                    if var updated = self.syncFolders.first(where: { $0.id == folder.id }) {
+                        updated.symlinkState = .local
+                        self.updateSyncFolder(updated)
+                    }
+                case .failure(let error):
+                    self.addLog(ActivityEntry(level: .error, category: .sync, message: "Failed to unsymlink \(folder.name): \(error)"))
+                }
+            }
+        }
+    }
+    
     func removeSyncFolder(_ folder: SyncFolder) {
         syncFolders.removeAll { $0.id == folder.id }
         saveSyncFolders()

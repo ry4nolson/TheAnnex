@@ -12,6 +12,12 @@ All notable changes to The Annex will be documented in this file.
 
 
 ## [Unreleased]
+
+### Fixed
+- **Symlink restore when the NAS “looks” online** — automatic unsymlinking now also runs when ICMP ping still succeeds but the configured share path is missing, when a multi-NAS folder’s bound device stops responding, or when app state says `.local` but the symlink is still on disk (so browser saves to `~/Downloads` work again)
+- **Dangling symlinks invisible to the app** — symlink detection no longer relies on `fileExists` (which follows links), so a broken `~/Downloads` → NAS link is still detected and removed
+- **“Already symlinked” corrupting app state** — after a successful sync, re-creating the same NAS symlink was treated as an error and `symlinkState` was saved as `.local` while the disk stayed symlinked, so NAS-offline unsymlink skipped that folder; matching an existing link is now a no-op success
+
 ## [1.11.0] - 2026-03-16
 ## [1.10.0] - 2026-03-16
 

@@ -112,6 +112,20 @@ class NASMonitor: ObservableObject {
                     }
                     
                     self.updateDiskSpace()
+                    
+                    // Ping can succeed while SMB shares are gone; a second NAS can be up while Downloads' NAS is down.
+                    let onlineSnapshot = onlineStatus
+                    DispatchQueue.global(qos: .utility).async { [weak self] in
+                        let folders = DispatchQueue.main.sync { AppState.shared.syncFolders }
+                        let results = SymlinkManager.shared.repairSymlinksWhenNASMayBePartiallyReachable(
+                            folders: folders,
+                            perDeviceOnline: onlineSnapshot
+                        )
+                        if !results.isEmpty {
+                            AppState.shared.applySymlinkUnlinkResults(results)
+                            self?.log(.warning, category: .sync, message: "Symlink repair: restored \(results.count) folder(s) — NAS share unreachable while host still responds")
+                        }
+                    }
                 } else {
                     if previousState != .offline {
                         self.currentState = .offline

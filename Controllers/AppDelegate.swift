@@ -57,21 +57,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 DispatchQueue.global(qos: .userInitiated).async {
                     let folders = AppState.shared.syncFolders
                     let results = SymlinkManager.shared.handleNASOffline(folders: folders)
-                    
-                    for (folder, result) in results {
-                        switch result {
-                        case .success:
-                            AppState.shared.addLog(ActivityEntry(level: .info, category: .sync, message: "Unsymlinked \(folder.name) — files will save locally"))
-                            if var updated = AppState.shared.syncFolders.first(where: { $0.id == folder.id }) {
-                                updated.symlinkState = .local
-                                DispatchQueue.main.async {
-                                    AppState.shared.updateSyncFolder(updated)
-                                }
-                            }
-                        case .failure(let error):
-                            AppState.shared.addLog(ActivityEntry(level: .error, category: .sync, message: "Failed to unsymlink \(folder.name): \(error)"))
-                        }
-                    }
+                    AppState.shared.applySymlinkUnlinkResults(results)
                 }
             }
         }
